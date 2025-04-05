@@ -1,6 +1,6 @@
 # MangoDB 
 
-MangoDB is a clone in BitCask written in Java 17. The purpose of this project is to learn how BitCask works and to benchmark it's performance when 
+MangoDB is a clone of BitCask written in Java 17. The purpose of this project is to learn how BitCask works and to benchmark its performance when 
 implemented in Java. The original BitCask, used as part of Riak, is written in Erlang. 
 
 ## How to Run 
