@@ -6,10 +6,14 @@ import java.nio.channels.FileChannel;
 import java.nio.charset.StandardCharsets;
 
 public class LogWriter {
-    private final FileChannel fileChannel;
+    private FileChannel fileChannel;
 
     public LogWriter(FileChannel fileChannel) {
         this.fileChannel = fileChannel;
+    }
+
+    public void setFileChannel(final FileChannel fileChannel) {
+       this.fileChannel = fileChannel;
     }
 
     public long write(final String key, final String value) throws IOException {
@@ -20,7 +24,7 @@ public class LogWriter {
 
             // total size = 8 (timestamp) + 4 (keyLen) + 4 (valueLen) + key + value
             final ByteBuffer buffer = ByteBuffer.allocate(
-                    Long.BYTES + Integer.BYTES + Integer.BYTES + keyBytes.length + valueBytes.length
+                    Long.BYTES + Integer.BYTES + Integer.BYTES + keyBytes.length + valueBytes.length + 2
             );
 
             buffer.putLong(timestamp);
@@ -28,6 +32,7 @@ public class LogWriter {
             buffer.putInt(valueBytes.length);
             buffer.put(keyBytes);
             buffer.put(valueBytes);
+            buffer.putChar('\n');
             buffer.flip();
 
             final long startPosition = fileChannel.position();
