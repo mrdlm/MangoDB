@@ -23,7 +23,7 @@ func generateRandomString(length int) string {
 
 func main() {
 
-	fmt.Println("Starting benchmark with random keys and values...")
+	fmt.Println("Starting benchmark with random keys and values...\n\n")
 	conn, err := net.Dial("tcp", addr)
 	if err != nil {
 		panic(err)
@@ -32,7 +32,7 @@ func main() {
 	writer := bufio.NewWriter(conn)
 	reader := bufio.NewReader(conn)
 
-	// runWriteBenchmark(writer, reader)
+	runWriteBenchmark(writer, reader)
 	runReadBenchmark(writer, reader)
 
 	defer conn.Close()
@@ -63,7 +63,7 @@ func runWriteBenchmark(writer *bufio.Writer, reader *bufio.Reader) {
 
 	duration := time.Since(start)
 	fmt.Printf("Total time: %v, for %v records\n", duration, numReqs)
-	fmt.Printf("Write Throughput: %v ops/s\n", float64(numReqs)/duration.Seconds())
+	fmt.Printf("Write Throughput: %v ops/s\n\n", float64(numReqs)/duration.Seconds())
 }
 
 func runReadBenchmark(writer *bufio.Writer, reader *bufio.Reader) {
@@ -91,5 +91,5 @@ func runReadBenchmark(writer *bufio.Writer, reader *bufio.Reader) {
 
 	duration := time.Since(start)
 	fmt.Printf("Total time: %v, for %v records\n", duration, numReqs)
-	fmt.Printf("Read throughput: %v ops/s\n", float64(numReqs)/duration.Seconds())
+	fmt.Printf("Read throughput: %v ops/s\n\n", float64(numReqs)/duration.Seconds())
 }
