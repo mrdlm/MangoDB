@@ -7,20 +7,29 @@ import java.nio.charset.StandardCharsets;
 
 public class LogWriter {
     private FileChannel fileChannel;
+    private String activeFileName;
 
-    public LogWriter(FileChannel fileChannel) {
+    public LogWriter(final FileChannel fileChannel, final String activeFileName) {
         this.fileChannel = fileChannel;
+        this.activeFileName = activeFileName;
+    }
+
+    public void setActiveFileName(final String activeFileName) {
+        this.activeFileName = activeFileName;
     }
 
     public void setFileChannel(final FileChannel fileChannel) {
        this.fileChannel = fileChannel;
     }
 
-    public long write(final String key, final String value) throws IOException {
+    public String getActiveFileName() {
+        return this.activeFileName;
+    }
+
+    public long write(final String key, final String value, final long timestamp) throws IOException {
         try {
             final byte[] keyBytes = key.getBytes(StandardCharsets.UTF_8);
             final byte[] valueBytes = value.getBytes(StandardCharsets.UTF_8);
-            final long timestamp = System.currentTimeMillis();
 
             // total size = 8 (timestamp) + 4 (keyLen) + 4 (valueLen) + key + value
             final ByteBuffer buffer = ByteBuffer.allocate(

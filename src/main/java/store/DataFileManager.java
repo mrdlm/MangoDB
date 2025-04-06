@@ -1,5 +1,6 @@
 package store;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.channels.FileChannel;
 import java.nio.file.Path;
@@ -7,13 +8,15 @@ import java.nio.file.StandardOpenOption;
 import java.util.HashMap;
 import java.util.Map;
 
+record InMemRecord(long offset, String filename, long timestamp) {
+}
+
 public class DataFileManager {
     private final LogWriter logWriter;
-    private final Map<String, Long> keyDir;
-    private final Map<String, FileChannel> keyFileMap;
+    private Map<String, InMemRecord> keyDir;
+    private Map<String, FileChannel> fileToChannelMap;
     private FileChannel readFileChannel;
     private FileChannel writeFileChannel;
-    private static long MAX_FILE_SIZE = 50;
 
     // TODO: this shouldn't be hardcoded
     private static final String PATH_TO_DATA_FILE = "/Users/mmohan/Personal/projects/MangoDB/data/";
@@ -21,7 +24,8 @@ public class DataFileManager {
     public DataFileManager() throws IOException {
         final String activeFileName = System.currentTimeMillis() + ".data";
 
-        keyFileMap = new HashMap<>();
+        constructFileToChannelMap();
+        constructKeyDir();
 
         writeFileChannel= FileChannel.open(
                 Path.of(PATH_TO_DATA_FILE + activeFileName),
@@ -31,46 +35,99 @@ public class DataFileManager {
         readFileChannel = FileChannel.open(
                 Path.of(PATH_TO_DATA_FILE + activeFileName),
                 StandardOpenOption.READ);
+        fileToChannelMap.put(activeFileName, readFileChannel);
 
-        this.logWriter = new LogWriter(writeFileChannel);
-        this.keyDir = new HashMap<>();
+        this.logWriter = new LogWriter(writeFileChannel, activeFileName);
     }
 
     public void write(final String key, final String value) throws IOException {
-        final long offset = logWriter.write(key, value);
+        final long timestamp = System.currentTimeMillis();
+        System.out.printf("writing to %s\n", logWriter.getActiveFileName());
+        final long offset = logWriter.write(key, value, timestamp);
+        keyDir.put(key, new InMemRecord(offset, logWriter.getActiveFileName(), timestamp));
 
-        keyDir.put(key, offset);
-        keyFileMap.put(key, readFileChannel);
-        logWriter.flush();
-
-        System.out.println(writeFileChannel.position());
+        long MAX_FILE_SIZE = 50;
         if (writeFileChannel.position() > MAX_FILE_SIZE) {
-            writeFileChannel.close();
-            final String activeFileName = System.currentTimeMillis() + ".data";
-
-            writeFileChannel = FileChannel.open(
-                    Path.of(PATH_TO_DATA_FILE + activeFileName),
-                    StandardOpenOption.CREATE,
-                    StandardOpenOption.APPEND);
-            logWriter.setFileChannel(writeFileChannel);
-
-            readFileChannel.close();
-            readFileChannel = FileChannel.open(
-                    Path.of(PATH_TO_DATA_FILE + activeFileName),
-                    StandardOpenOption.READ);
+            updateFileChannels();
         }
     }
 
     public String read(final String key) throws IOException {
-        final FileChannel readChannel = keyFileMap.get(key);
-        final Long offset = keyDir.getOrDefault(key, null);
+        final InMemRecord inMemRecord =  keyDir.getOrDefault(key, null);
 
-        if (offset != null) {
-            LogRecord record = LogRecord.readFrom(readChannel, offset);
-            return record.getValue();
+        if (inMemRecord == null) {
+            return null;
+        }
+
+        System.out.println("Reading from " + inMemRecord.filename());
+        final FileChannel readChannel = fileToChannelMap.get(inMemRecord.filename());
+        final DiskRecord record = DiskRecord.readFrom(readChannel, inMemRecord.offset());
+
+       if (record != null) {
+            return record.value();
         }
 
         return null;
+    }
+
+    private void updateFileChannels() throws IOException {
+        final long timestamp = System.currentTimeMillis();
+        writeFileChannel.close();
+        final String activeFileName = timestamp + ".data";
+
+        writeFileChannel = FileChannel.open(
+                Path.of(PATH_TO_DATA_FILE + activeFileName),
+                StandardOpenOption.CREATE,
+                StandardOpenOption.APPEND);
+        logWriter.setFileChannel(writeFileChannel);
+        logWriter.setActiveFileName(activeFileName);
+
+        readFileChannel = FileChannel.open(
+                Path.of(PATH_TO_DATA_FILE + activeFileName),
+                StandardOpenOption.READ);
+        fileToChannelMap.put(activeFileName, readFileChannel);
+    }
+
+    private void constructFileToChannelMap() throws IOException {
+        this.fileToChannelMap = new HashMap<>();
+        final File dir = new File(PATH_TO_DATA_FILE);
+        File[] files = dir.listFiles();
+
+        for (final File file : files) {
+            readFileChannel = FileChannel.open(
+                    Path.of(file.getAbsolutePath()),
+                    StandardOpenOption.READ);
+            fileToChannelMap.put(file.getName(), readFileChannel);
+        }
+
+        System.out.printf("File channels loaded for reading: %d\n", fileToChannelMap.size());
+    }
+
+    private void constructKeyDir() throws IOException {
+        this.keyDir = new HashMap<>();
+
+        for (final String filename: fileToChannelMap.keySet()) {
+            long offset = 0;
+            final FileChannel fileChannel = fileToChannelMap.get(filename);
+            while (offset < fileChannel.size()) {
+                final DiskRecord record = DiskRecord.readFrom(fileChannel, offset);
+                if (record != null) {
+                    if (keyDir.containsKey(record.key()) && !record.key().equals("hello")) {
+                        if (keyDir.get(record.key()).timestamp() > record.timestamp()) {
+                            offset = record.offset() + 2;
+                            continue;
+                        }
+                    }
+
+                    keyDir.put(record.key(), new InMemRecord(offset, filename, record.timestamp()));
+                    offset = record.offset() + 2;
+                } else {
+                    break;
+                }
+            }
+        }
+
+        System.out.printf("KeyDir constructed: %d\n", keyDir.size());
     }
 }
 
