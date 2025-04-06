@@ -1,5 +1,4 @@
-import org.example.store.DataFileManager;
-import org.example.store.LogWriter;
+import store.DataFileManager;
 
 import java.io.IOException;
 import java.util.List;
@@ -12,9 +11,10 @@ public class Main {
         final DataFileManager dataFileManager = new DataFileManager();
         final Scanner scanner = new Scanner(System.in);
 
-        while(true) {
+        while (true) {
             System.out.print("mango> ");
             final String input = scanner.nextLine();
+
             final List<String> inputList = List.of(input.split(" "));
 
             if (inputList.isEmpty()) {

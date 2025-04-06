@@ -3,7 +3,7 @@ plugins {
     id 'application'
 }
 
-group = 'org.example'
+group = ''
 version = '1.0-SNAPSHOT'
 
 repositories {
@@ -20,5 +20,5 @@ test {
 }
 
 application {
-    mainClass = 'org.example.Main'
+    mainClass = 'Main'
 }

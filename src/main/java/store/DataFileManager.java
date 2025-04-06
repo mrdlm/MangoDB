@@ -1,4 +1,4 @@
-package org.example.store;
+package store;
 
 import java.io.IOException;
 import java.nio.channels.FileChannel;
