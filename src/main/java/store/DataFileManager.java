@@ -19,7 +19,7 @@ public class DataFileManager {
     private FileChannel writeFileChannel;
 
     // TODO: this shouldn't be hardcoded
-    private static final String PATH_TO_DATA_FILE = "/Users/mmohan/Personal/projects/MangoDB/data/";
+    private static final String PATH_TO_DATA_FILE = "./data/";
 
     public DataFileManager() throws IOException {
         final String activeFileName = System.currentTimeMillis() + ".data";
@@ -43,10 +43,11 @@ public class DataFileManager {
     public void write(final String key, final String value) throws IOException {
         final long timestamp = System.currentTimeMillis();
         System.out.printf("writing to %s\n", logWriter.getActiveFileName());
-        final long offset = logWriter.write(key, value, timestamp);
-        keyDir.put(key, new InMemRecord(offset, logWriter.getActiveFileName(), timestamp));
 
-        long MAX_FILE_SIZE = 50;
+        final long offset = logWriter.write(key, value, timestamp); // write to disk
+        keyDir.put(key, new InMemRecord(offset, logWriter.getActiveFileName(), timestamp)); // update in memory map
+
+        long MAX_FILE_SIZE = 64 * 1024 * 1024;
         if (writeFileChannel.position() > MAX_FILE_SIZE) {
             updateFileChannels();
         }
@@ -91,8 +92,9 @@ public class DataFileManager {
     private void constructFileToChannelMap() throws IOException {
         this.fileToChannelMap = new HashMap<>();
         final File dir = new File(PATH_TO_DATA_FILE);
-        File[] files = dir.listFiles();
+        final File[] files = dir.listFiles();
 
+        assert files != null;
         for (final File file : files) {
             readFileChannel = FileChannel.open(
                     Path.of(file.getAbsolutePath()),
@@ -109,10 +111,11 @@ public class DataFileManager {
         for (final String filename: fileToChannelMap.keySet()) {
             long offset = 0;
             final FileChannel fileChannel = fileToChannelMap.get(filename);
+
             while (offset < fileChannel.size()) {
                 final DiskRecord record = DiskRecord.readFrom(fileChannel, offset);
                 if (record != null) {
-                    if (keyDir.containsKey(record.key()) && !record.key().equals("hello")) {
+                    if (keyDir.containsKey(record.key())) {
                         if (keyDir.get(record.key()).timestamp() > record.timestamp()) {
                             offset = record.offset() + 2;
                             continue;

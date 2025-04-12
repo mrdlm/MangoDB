@@ -12,15 +12,14 @@ import java.net.Socket;
 public class TCPServer {
 
     private final int port = 8080;
-    private ServerSocket serverSocket;
-    private MangoDB mangoDB = new MangoDB();
+    private final MangoDB mangoDB = new MangoDB();
 
     public TCPServer() throws IOException {
     }
 
     public void start() {
         try {
-            serverSocket = new ServerSocket(port);
+            ServerSocket serverSocket = new ServerSocket(port);
 
             while (true) {
                 final Socket socketClient = serverSocket.accept();

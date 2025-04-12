@@ -13,7 +13,7 @@ public class MangoDB {
 
     public String handle(final String input) throws IOException {
         final List<String> inputList = List.of(input.split(" "));
-
+        System.out.println(inputList);
         if (inputList.isEmpty()) {
             return "";
         }

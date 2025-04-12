@@ -33,14 +33,14 @@ func main() {
 	reader := bufio.NewReader(conn)
 
 	runWriteBenchmark(writer, reader)
-	runReadBenchmark(writer, reader)
+	// runReadBenchmark(writer, reader)
 
 	defer conn.Close()
 }
 
 func runWriteBenchmark(writer *bufio.Writer, reader *bufio.Reader) {
 	start := time.Now()
-	numReqs := 1000
+	numReqs := 10000
 	for i := 0; i < numReqs; i++ {
 		key := generateRandomString(5)
 		value := generateRandomString(100)
