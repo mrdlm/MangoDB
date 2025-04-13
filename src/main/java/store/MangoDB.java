@@ -3,6 +3,7 @@ package store;
 import java.io.IOException;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.CompletableFuture;
 
 public class MangoDB {
     private final DataFileManager dataFileManager;
@@ -11,30 +12,28 @@ public class MangoDB {
         dataFileManager = new DataFileManager();
     }
 
-    public String handle(final String input) throws IOException {
+    public CompletableFuture<String> handle(final String input) throws IOException {
         final List<String> inputList = List.of(input.split(" "));
-        System.out.println(inputList);
+        // System.out.println(inputList);
         if (inputList.isEmpty()) {
-            return "";
+            return CompletableFuture.completedFuture("");
         }
 
         if (inputList.size() == 3) {
             if (!inputList.get(0).equals("PUT")) {
-                return "Invalid input";
+                return CompletableFuture.completedFuture("Invalid input");
             }
 
-            dataFileManager.write(inputList.get(1), inputList.get(2));
+            return dataFileManager.writeToQueue(inputList.get(1), inputList.get(2));
         } else if (inputList.size() == 2) {
             if (!inputList.get(0).equals("GET")) {
-                return "Invalid input";
+                return CompletableFuture.completedFuture("Invalid input");
             }
 
             final String value = dataFileManager.read(inputList.get(1));
-            return Objects.requireNonNullElse(value, "Key not found");
+            return CompletableFuture.completedFuture(Objects.requireNonNullElse(value, "Key not found"));
         } else {
-            return "Invalid input";
+            return CompletableFuture.completedFuture("Invalid input");
         }
-
-        return "success";
     }
 }

@@ -26,7 +26,7 @@ public class Main {
                     System.out.println("Invalid input");
                     continue;
                 }
-                dataFileManager.write(inputList.get(1), inputList.get(2));
+                dataFileManager.writeToQueue(inputList.get(1), inputList.get(2));
             } else if (inputList.size() == 2) {
                 if (!inputList.get(0).equals("GET")) {
                     System.out.println("Invalid input");
