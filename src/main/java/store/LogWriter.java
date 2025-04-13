@@ -4,6 +4,8 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.List;
 
 public class LogWriter {
     private FileChannel fileChannel;
@@ -47,7 +49,7 @@ public class LogWriter {
             final long startPosition = fileChannel.position();
             fileChannel.write(buffer);
 
-            System.out.printf("Writing to disk (key: %s, value: %s) \n", key, value);
+            // System.out.printf("Writing to disk (key: %s, value: %s) \n", key, value);
             return startPosition;
         } catch (final Exception e) {
             System.out.println("Error writing log: " + e.getMessage());
@@ -57,5 +59,61 @@ public class LogWriter {
 
     public void flush() throws IOException {
         fileChannel.force(true);
+    }
+
+    public List<Long> writeBatch(final List<WriteRequest> batch) throws IOException {
+        if (batch == null || batch.isEmpty()) {
+            return new ArrayList<>();
+        }
+
+        int totalSize = 0;
+        List<byte[]> keyBytesList = new ArrayList<>(batch.size());
+        List<byte[]> valueBytesList = new ArrayList<>(batch.size());
+
+        for (WriteRequest request : batch) {
+            byte[] keyBytes = request.key().getBytes(StandardCharsets.UTF_8);
+            byte[] valueBytes = request.value().getBytes(StandardCharsets.UTF_8);
+            keyBytesList.add(keyBytes);
+            valueBytesList.add(valueBytes);
+            totalSize += Long.BYTES + Integer.BYTES + Integer.BYTES + keyBytes.length + valueBytes.length + 2;
+        }
+
+        final ByteBuffer batchBuffer = ByteBuffer.allocate(totalSize);
+        final List<Long> offsets = new ArrayList<>(batch.size());
+        long currentOffset = -1; // Will be set before the first write
+
+        try {
+            final long batchStartOffset = fileChannel.position();
+            currentOffset = batchStartOffset;
+
+            for (int i = 0; i < batch.size(); i++) {
+                WriteRequest request = batch.get(i);
+                byte[] keyBytes = keyBytesList.get(i);
+                byte[] valueBytes = valueBytesList.get(i);
+
+                offsets.add(currentOffset); // Store offset for this record
+
+                batchBuffer.putLong(request.timestamp()); // Use request timestamp
+                batchBuffer.putInt(keyBytes.length);
+                batchBuffer.putInt(valueBytes.length);
+                batchBuffer.put(keyBytes);
+                batchBuffer.put(valueBytes);
+                batchBuffer.putChar('\n'); // Use the same record separator
+
+                currentOffset += Long.BYTES + Integer.BYTES + Integer.BYTES + keyBytes.length + valueBytes.length + 2;
+            }
+
+            batchBuffer.flip();
+            while(batchBuffer.hasRemaining()) {
+                fileChannel.write(batchBuffer);
+            }
+
+            // System.out.printf("Wrote batch of %d records to disk (%s)\n", batch.size(), activeFileName);
+            return offsets;
+        } catch (final IOException e) {
+            System.err.println("Error writing batch log: " + e.getMessage());
+            // Let the caller handle completing futures exceptionally
+            throw e;
+        }
     }
 }

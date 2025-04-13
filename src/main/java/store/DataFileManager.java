@@ -5,44 +5,137 @@ import java.io.IOException;
 import java.nio.channels.FileChannel;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadLocalRandom;
 
 record InMemRecord(long offset, String filename, long timestamp) {
 }
 
+record WriteRequest(String key, String value, long timestamp, CompletableFuture<String> future) {
+}
+
 public class DataFileManager {
+    private static final int MAX_BATCH_SIZE = 100;
     private final LogWriter logWriter;
-    private Map<String, InMemRecord> keyDir;
+    private ConcurrentMap<String, InMemRecord> keyDir;
     private Map<String, FileChannel> fileToChannelMap;
     private FileChannel readFileChannel;
     private FileChannel writeFileChannel;
+    private List<LogWriter> logWriters;
+    private BlockingQueue<WriteRequest> writeQueue;
+    private final ExecutorService writerThreadPool;
+
 
     // TODO: this shouldn't be hardcoded
     private static final String PATH_TO_DATA_FILE = "./data/";
+    private static final int WRITE_CHANNELS_COUNT = 1;
 
     public DataFileManager() throws IOException {
         final String activeFileName = System.currentTimeMillis() + ".data";
 
         constructFileToChannelMap();
         constructKeyDir();
+        constructLogWriters();
 
-        writeFileChannel= FileChannel.open(
-                Path.of(PATH_TO_DATA_FILE + activeFileName),
-                StandardOpenOption.CREATE,
-                StandardOpenOption.APPEND);
-
-        readFileChannel = FileChannel.open(
-                Path.of(PATH_TO_DATA_FILE + activeFileName),
-                StandardOpenOption.READ);
-        fileToChannelMap.put(activeFileName, readFileChannel);
+        this.writerThreadPool = Executors.newFixedThreadPool(WRITE_CHANNELS_COUNT);
+        this.writeQueue = new ArrayBlockingQueue<>(1000);
+        startWriterTasks();
 
         this.logWriter = new LogWriter(writeFileChannel, activeFileName);
     }
 
-    public void write(final String key, final String value) throws IOException {
+    private void constructLogWriters() throws IOException {
+        this.logWriters = new ArrayList<>();
+        for (int i = 0; i < WRITE_CHANNELS_COUNT; i++) {
+
+            final String activeFileName = System.currentTimeMillis() + ".data";
+            writeFileChannel = FileChannel.open(
+                    Path.of(PATH_TO_DATA_FILE + activeFileName),
+                    StandardOpenOption.CREATE,
+                    StandardOpenOption.APPEND);
+
+            final LogWriter logWriter = new LogWriter(writeFileChannel, activeFileName);
+            logWriters.add(logWriter);
+
+            readFileChannel = FileChannel.open(
+                    Path.of(PATH_TO_DATA_FILE + activeFileName),
+                    StandardOpenOption.READ);
+            fileToChannelMap.put(activeFileName, readFileChannel);
+        }
+    }
+
+    public CompletableFuture<String> writeToQueue(final String key, final String value) {
+        // System.out.println("Going to write: " + key);
+        final CompletableFuture<String> future = new CompletableFuture<>();
+        try {
+            writeQueue.put(new WriteRequest(key, value, System.currentTimeMillis(), future));
+            // System.out.println("Wrote: " + key);
+        } catch (InterruptedException e) {
+            future.completeExceptionally(e);
+        }
+
+        return future;
+    }
+
+    private void startWriterTasks() {
+        System.out.println("Starting " + logWriters.size() + " writer tasks...");
+        for (int i = 0; i < logWriters.size(); i++) {
+            writerThreadPool.submit(() -> {
+                try {
+                    processWriteQueue();
+                } catch (InterruptedException e) {
+                    System.out.println("Writer task interrupted.");
+                    Thread.currentThread().interrupt();
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+            });
+        }
+        // System.out.println("Writer tasks submitted.");
+    }
+
+    private void processWriteQueue() throws InterruptedException, IOException {
+        while (!Thread.currentThread().isInterrupted()) {
+            final List<WriteRequest> batch = new ArrayList<>(MAX_BATCH_SIZE);
+            // System.out.println("Waiting to read from queue");
+
+            final WriteRequest writeRequest = writeQueue.take();
+            batch.add(writeRequest);
+            writeQueue.drainTo(batch, MAX_BATCH_SIZE - 1);
+
+            // System.out.printf("Processing batch of size: %d; write queue size: %d\n", batch.size(), writeQueue.size());
+
+            LogWriter logWriter = getLogWriter(String.valueOf(ThreadLocalRandom.current().nextInt(1, 11)));
+            List<Long> offsets = logWriter.writeBatch(batch);
+
+            for (int i = 0; i < batch.size(); i++) {
+                WriteRequest request = batch.get(i);
+                long offset = offsets.get(i);
+                keyDir.put(request.key(), new InMemRecord(offset, logWriter.getActiveFileName(), request.timestamp()));
+                request.future().complete("OK"); // Or some success indicator
+            }
+        }
+    }
+
+    private LogWriter getLogWriter(final String key) {
+        final int writerIndex = Math.abs(key.hashCode()) % logWriters.size();
+        return logWriters.get(writerIndex);
+
+    }
+
+    public void write(final String key, final String value, final LogWriter logWriter) throws IOException {
         final long timestamp = System.currentTimeMillis();
-        System.out.printf("writing to %s\n", logWriter.getActiveFileName());
+        // System.out.printf("writing to %s\n", logWriter.getActiveFileName());
 
         final long offset = logWriter.write(key, value, timestamp); // write to disk
         keyDir.put(key, new InMemRecord(offset, logWriter.getActiveFileName(), timestamp)); // update in memory map
@@ -106,7 +199,7 @@ public class DataFileManager {
     }
 
     private void constructKeyDir() throws IOException {
-        this.keyDir = new HashMap<>();
+        this.keyDir = new ConcurrentHashMap<>();
 
         for (final String filename: fileToChannelMap.keySet()) {
             long offset = 0;

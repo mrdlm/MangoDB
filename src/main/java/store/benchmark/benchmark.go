@@ -27,7 +27,7 @@ func main() {
 
 	fmt.Println("Starting benchmark with random keys and values...\n\n")
 	// runSingleConnectionBenchmark()
-	runMultiConnectionBenchmark(50, 100000) // 10 connections, 1000 requests per connection
+	runMultiConnectionBenchmark(50, 1000) // 10 connections, 1000 requests per connection
 }
 
 func runMultiConnectionBenchmark(numConnections, numRequestsPerConnection int) {
@@ -37,7 +37,7 @@ func runMultiConnectionBenchmark(numConnections, numRequestsPerConnection int) {
 	var wg sync.WaitGroup
 	start := time.Now()
 
-	var failedConnection int
+	var failedConnection, successfulWrites int
 	var countMutex sync.Mutex
 
 	for i := 0; i < numConnections; i++ {
@@ -63,29 +63,49 @@ func runMultiConnectionBenchmark(numConnections, numRequestsPerConnection int) {
 			writer := bufio.NewWriter(conn)
 			reader := bufio.NewReader(conn)
 
-			for j := 0; j < numRequestsPerConnection; j++ {
-				key := generateRandomString(5)
-				value := generateRandomString(100)
+			localSuccessCount := 0
+			const pipelineSize = 100
 
-				cmd := fmt.Sprintf("PUT %s %s\n", key, value)
-				_, err := writer.WriteString(cmd)
+			for j := 0; j < numRequestsPerConnection; j += pipelineSize {
 
-				if err != nil {
-					fmt.Println("Write failed:", err)
-					return
+				requestsInBatch := pipelineSize
+
+				if j+pipelineSize > numRequestsPerConnection {
+					requestsInBatch = numRequestsPerConnection - j
+				}
+
+				for k := 0; k < requestsInBatch; k++ {
+					key := generateRandomString(5)
+					value := generateRandomString(100)
+
+					cmd := fmt.Sprintf("PUT %s %s\n", key, value)
+					_, err := writer.WriteString(cmd)
+
+					if err != nil {
+						fmt.Println("Write failed:", err)
+						return
+					}
 				}
 
 				err = writer.Flush()
 				if err != nil {
+					fmt.Println("Flush failed: ", err)
 					return
 				}
 
-				_, err = reader.ReadString('\n')
-				if err != nil {
-					fmt.Println("Read failed:", err)
-					return
+				for k := 0; k < requestsInBatch; k++ {
+					_, err = reader.ReadString('\n')
+					if err != nil {
+						fmt.Println("Read failed on connection after successful write:", err)
+						break
+					}
+					localSuccessCount++
 				}
 			}
+
+			countMutex.Lock()
+			successfulWrites += localSuccessCount
+			countMutex.Unlock()
 		}(i)
 	}
 
@@ -93,8 +113,10 @@ func runMultiConnectionBenchmark(numConnections, numRequestsPerConnection int) {
 	duration := time.Since(start)
 
 	fmt.Printf("Benchmarking completed in %s\n", time.Since(start))
+	fmt.Printf("Total successful writes: %d out of %d attempted\n",
+		successfulWrites, numRequestsPerConnection*numConnections)
 	fmt.Printf("Write Throughput: %v ops/s\n\n",
-		float64(numRequestsPerConnection*(numConnections-failedConnection))/duration.Seconds())
+		float64(successfulWrites)/duration.Seconds())
 }
 
 func runSingleConnectionBenchmark() {

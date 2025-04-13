@@ -22,7 +22,7 @@ public class MangoDBServer {
 
     public MangoDBServer() throws IOException {
         this.numThreads = Runtime.getRuntime().availableProcessors();
-        this.threadPool = Executors.newFixedThreadPool(4 * numThreads);
+        this.threadPool = Executors.newFixedThreadPool(100); // 2 * numThreads);
         System.out.println("Number of available processors: " + numThreads);
 
         // so that forced shut-downs also close the threadpool
@@ -56,18 +56,6 @@ public class MangoDBServer {
         } finally {
             shutdown();
         }
-
-        try {
-            final ServerSocket serverSocket = new ServerSocket(port);
-
-            while (true) {
-                final Socket socketClient = serverSocket.accept(); // blocking call
-                handleClient(socketClient);
-            }
-        } catch (final IOException e) {
-            System.out.println("Error starting server: " + e.getMessage());
-            throw new RuntimeException(e);
-        }
     }
 
     private void shutdown() {
@@ -89,7 +77,7 @@ public class MangoDBServer {
     }
 
     public void handleClient(final Socket socketClient) {
-        System.out.println("Handling client: " + socketClient.getRemoteSocketAddress());
+        // System.out.println("Handling client: " + socketClient.getRemoteSocketAddress());
 
         try {
            final BufferedReader in = new BufferedReader(new InputStreamReader(socketClient.getInputStream()));
@@ -97,8 +85,13 @@ public class MangoDBServer {
 
            String line;
            while ((line = in.readLine()) != null) {
-               System.out.println("Received: " + line);
-               out.println(mangoDB.handle(line));
+               // System.out.println("Received: " + line);
+               mangoDB.handle(line)
+                       .thenAccept(out::println)
+                       .exceptionally(e -> {
+                           System.out.println("Error handling client: " + e.getMessage());
+                           return null;
+                       });
            }
 
            socketClient.close();
