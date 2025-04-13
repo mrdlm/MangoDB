@@ -8,12 +8,18 @@ PORT = 8080  # Port used in MangoDBServer.java
 def send_command(command):
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         try:
+            # Set timeout to prevent tests from hanging
+            s.settimeout(10)
             s.connect((HOST, PORT))
             s.sendall(f"{command}\n".encode("utf-8"))
-            response_bytes = s.recv(1024) # why 1024?
+
+            # Using 1024 as standard buffer size for receiving input
+            response_bytes = s.recv(1024)
             response = response_bytes.decode("utf-8")
         except ConnectionRefusedError:
             pytest.fail(f"Connection to {HOST}:{PORT} failed")
+        except socket.timeout:
+                pytest.fail(f"Connection to {HOST}:{PORT} timed out")
         except Exception as e:
             pytest.fail(f"Unexpected error: {e}")
 
@@ -22,18 +28,18 @@ def send_command(command):
 # -- Test Cases ---
 
 def test_put_get():
-    assert send_command("PUT hi here") == "OK\n"
-    assert send_command("GET hi") == "here\n"
+    assert send_command("PUT key1 value1") == "OK\n"
+    assert send_command("GET key1") == "value1\n"
 
 def test_put_get_multiple():
-    assert send_command("PUT hi here") == "OK\n"
-    assert send_command("PUT hi here_too") == "OK\n"
-    assert send_command("GET hi") == "here_too\n"
+    assert send_command("PUT key1 value1") == "OK\n"
+    assert send_command("PUT key1 value2") == "OK\n"
+    assert send_command("GET key1") == "value2\n"
 
 def test_get_nonexistent():
-    assert send_command("GET higurlkjdiutlwqke") == "NOT FOUND\n"
+    assert send_command("GET key1gurlkjdiutlwqke") == "NOT FOUND\n"
 
 def test_invalid_command():
-    assert send_command("MAY hi") == "INVALID INPUT\n"
-    assert send_command("PUT hi here how") == "INVALID INPUT\n"
-    assert send_command("GET hi here") == "INVALID INPUT\n"
+    assert send_command("MAY key1") == "INVALID INPUT\n"
+    assert send_command("PUT key1 value1 how") == "INVALID INPUT\n"
+    assert send_command("GET key1 value1") == "INVALID INPUT\n"
