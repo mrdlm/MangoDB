@@ -37,7 +37,3 @@ def test_invalid_command():
     assert send_command("MAY hi") == "INVALID INPUT\n"
     assert send_command("PUT hi here how") == "INVALID INPUT\n"
     assert send_command("GET hi here") == "INVALID INPUT\n"
-
-
-
-
