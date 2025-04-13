@@ -21,19 +21,19 @@ public class MangoDB {
 
         if (inputList.size() == 3) {
             if (!inputList.get(0).equals("PUT")) {
-                return CompletableFuture.completedFuture("Invalid input");
+                return CompletableFuture.completedFuture("INVALID INPUT");
             }
 
             return dataFileManager.writeToQueue(inputList.get(1), inputList.get(2));
         } else if (inputList.size() == 2) {
             if (!inputList.get(0).equals("GET")) {
-                return CompletableFuture.completedFuture("Invalid input");
+                return CompletableFuture.completedFuture("INVALID INPUT");
             }
 
             final String value = dataFileManager.read(inputList.get(1));
-            return CompletableFuture.completedFuture(Objects.requireNonNullElse(value, "Key not found"));
+            return CompletableFuture.completedFuture(Objects.requireNonNullElse(value, "NOT FOUND"));
         } else {
-            return CompletableFuture.completedFuture("Invalid input");
+            return CompletableFuture.completedFuture("INVALID INPUT");
         }
     }
 }
