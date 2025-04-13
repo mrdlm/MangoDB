@@ -24,7 +24,7 @@ record InMemRecord(long offset, String filename, long timestamp) {
 record WriteRequest(String key, String value, long timestamp, CompletableFuture<String> future) {
 }
 
-public class DataFileManager {
+public class StorageEngine {
     private static final int MAX_BATCH_SIZE = 100;
     private final LogWriter logWriter;
     private ConcurrentMap<String, InMemRecord> keyDir;
@@ -39,7 +39,7 @@ public class DataFileManager {
     private static final String PATH_TO_DATA_FILE = "./data/";
     private static final int WRITE_CHANNELS_COUNT = 1;
 
-    public DataFileManager() throws IOException {
+    public StorageEngine() throws IOException {
         final String activeFileName = System.currentTimeMillis() + ".data";
 
         constructFileToChannelMap();
@@ -143,6 +143,10 @@ public class DataFileManager {
         if (writeFileChannel.position() > MAX_FILE_SIZE) {
             updateFileChannels();
         }
+    }
+
+    public Boolean exists(final String key) {
+        return keyDir.containsKey(key);
     }
 
     public String read(final String key) throws IOException {
