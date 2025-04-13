@@ -20,5 +20,5 @@ test {
 }
 
 application {
-    mainClass = 'Main'
+    mainClass = 'store.net.MangoDBServer'
 }

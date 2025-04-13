@@ -5,22 +5,16 @@ implemented in Java. The original BitCask, used as part of Riak, is written in E
 
 ## How to Run 
 
-`./gradlew build`
-`./gradlew run`
+`chmod +x run.sh` (only needed once)
+`./run.sh`
+
+## How to run integration tests
+
+`pip install -r requirements.txt`
+`pytest`
 
 ## Available Operations
 
 `PUT key value` to add a key-value part
 `GET key` to get value for the key
 
-## TODO Feature
-
-### Basics
-
-* deletions 
-* compaction
-
-### Optimisations 
-
-* crash recovery 
-* multi-threading

@@ -35,7 +35,6 @@ public class DataFileManager {
     private BlockingQueue<WriteRequest> writeQueue;
     private final ExecutorService writerThreadPool;
 
-
     // TODO: this shouldn't be hardcoded
     private static final String PATH_TO_DATA_FILE = "./data/";
     private static final int WRITE_CHANNELS_COUNT = 1;
@@ -226,4 +225,3 @@ public class DataFileManager {
         System.out.printf("KeyDir constructed: %d\n", keyDir.size());
     }
 }
-

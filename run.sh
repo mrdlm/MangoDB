@@ -1,0 +1,1 @@
+./gradlew classes && java -cp build/classes/java/main store.net.MangoDBServer

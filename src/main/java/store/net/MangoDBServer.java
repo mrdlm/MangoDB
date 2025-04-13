@@ -43,6 +43,7 @@ public class MangoDBServer {
             while (running) {
                 try {
                     final Socket socketClient = serverSocket.accept(); // blocking call
+                    System.out.println("Accepted client connection from " + socketClient.getRemoteSocketAddress());
                     threadPool.submit(() -> handleClient(socketClient));
                 } catch (final IOException e) {
                     if (running) {
