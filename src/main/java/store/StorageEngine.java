@@ -18,13 +18,15 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadLocalRandom;
 
+import static store.LogWriter.TOMBSTONE_VALUE;
+
 record InMemRecord(long offset, String filename, long timestamp) {
 }
 
 record WriteRequest(String key, String value, long timestamp, CompletableFuture<String> future) {
 }
 
-public class DataFileManager {
+public class StorageEngine {
     private static final int MAX_BATCH_SIZE = 100;
     private final LogWriter logWriter;
     private ConcurrentMap<String, InMemRecord> keyDir;
@@ -39,7 +41,7 @@ public class DataFileManager {
     private static final String PATH_TO_DATA_FILE = "./data/";
     private static final int WRITE_CHANNELS_COUNT = 1;
 
-    public DataFileManager() throws IOException {
+    public StorageEngine() throws IOException {
         final String activeFileName = System.currentTimeMillis() + ".data";
 
         constructFileToChannelMap();
@@ -129,7 +131,6 @@ public class DataFileManager {
     private LogWriter getLogWriter(final String key) {
         final int writerIndex = Math.abs(key.hashCode()) % logWriters.size();
         return logWriters.get(writerIndex);
-
     }
 
     public void write(final String key, final String value, final LogWriter logWriter) throws IOException {
@@ -143,6 +144,10 @@ public class DataFileManager {
         if (writeFileChannel.position() > MAX_FILE_SIZE) {
             updateFileChannels();
         }
+    }
+
+    public Boolean exists(final String key) {
+        return keyDir.containsKey(key);
     }
 
     public String read(final String key) throws IOException {
@@ -207,6 +212,13 @@ public class DataFileManager {
             while (offset < fileChannel.size()) {
                 final DiskRecord record = DiskRecord.readFrom(fileChannel, offset);
                 if (record != null) {
+                    if (record.value().equals(TOMBSTONE_VALUE)) {
+                        if (keyDir.containsKey(record.key()) && keyDir.get(record.key()).timestamp() < record.timestamp()) {
+                            keyDir.remove(record.key());
+                            continue;
+                        }
+                    }
+
                     if (keyDir.containsKey(record.key())) {
                         if (keyDir.get(record.key()).timestamp() > record.timestamp()) {
                             offset = record.offset() + 2;
@@ -223,5 +235,11 @@ public class DataFileManager {
         }
 
         System.out.printf("KeyDir constructed: %d\n", keyDir.size());
+    }
+
+    public CompletableFuture<String> delete(final String key) throws IOException {
+        keyDir.remove(key);
+        System.out.printf("Deleted key: %s\n", key);
+        return logWriter.delete(key);
     }
 }
