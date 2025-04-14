@@ -1,6 +1,6 @@
 package store.net;
 
-import store.MangoDB;
+import store.StorageService;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -15,7 +15,7 @@ import java.util.concurrent.TimeUnit;
 public class MangoDBServer {
 
     private final int port = 8080;
-    private final MangoDB mangoDB = new MangoDB();
+    private final StorageService storageService = new StorageService();
     private final ExecutorService threadPool;
     private final int numThreads;
     private volatile boolean running = true;
@@ -87,7 +87,7 @@ public class MangoDBServer {
            String line;
            while ((line = in.readLine()) != null) {
                // System.out.println("Received: " + line);
-               mangoDB.handle(line)
+               storageService.handle(line)
                        .thenAccept(out::println)
                        .exceptionally(e -> {
                            System.out.println("Error handling client: " + e.getMessage());

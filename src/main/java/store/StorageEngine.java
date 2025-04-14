@@ -18,6 +18,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadLocalRandom;
 
+import static store.LogWriter.TOMBSTONE_VALUE;
+
 record InMemRecord(long offset, String filename, long timestamp) {
 }
 
@@ -129,7 +131,6 @@ public class StorageEngine {
     private LogWriter getLogWriter(final String key) {
         final int writerIndex = Math.abs(key.hashCode()) % logWriters.size();
         return logWriters.get(writerIndex);
-
     }
 
     public void write(final String key, final String value, final LogWriter logWriter) throws IOException {
@@ -211,6 +212,13 @@ public class StorageEngine {
             while (offset < fileChannel.size()) {
                 final DiskRecord record = DiskRecord.readFrom(fileChannel, offset);
                 if (record != null) {
+                    if (record.value().equals(TOMBSTONE_VALUE)) {
+                        if (keyDir.containsKey(record.key()) && keyDir.get(record.key()).timestamp() < record.timestamp()) {
+                            keyDir.remove(record.key());
+                            continue;
+                        }
+                    }
+
                     if (keyDir.containsKey(record.key())) {
                         if (keyDir.get(record.key()).timestamp() > record.timestamp()) {
                             offset = record.offset() + 2;
@@ -227,5 +235,11 @@ public class StorageEngine {
         }
 
         System.out.printf("KeyDir constructed: %d\n", keyDir.size());
+    }
+
+    public CompletableFuture<String> delete(final String key) throws IOException {
+        keyDir.remove(key);
+        System.out.printf("Deleted key: %s\n", key);
+        return logWriter.delete(key);
     }
 }

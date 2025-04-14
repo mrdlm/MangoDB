@@ -4,9 +4,12 @@ import java.io.IOException;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 
-public class MangoDB {
+import static store.LogWriter.TOMBSTONE_VALUE;
+
+public class StorageService {
     public static final String RESPONSE_INVALID_INPUT = "INVALID INPUT";
     private static final String RESPONSE_NOT_FOUND = "NOT FOUND";
+    public static final String RESERVED_KEYWORD_TOMBSTONE = "RESERVED KEYWORD __TOMBSTONE__";
     private final StorageEngine storageEngine;
 
     private static final String RESPONSE_EMPTY_INPUT = "";
@@ -16,7 +19,7 @@ public class MangoDB {
     private static final String CMD_FLUSH = "FLUSH";
     private static final String CMD_EXISTS = "EXISTS";
 
-    public MangoDB() throws IOException {
+    public StorageService() throws IOException {
         storageEngine = new StorageEngine();
     }
 
@@ -64,7 +67,21 @@ public class MangoDB {
     }
 
     private CompletableFuture<String> handleDelete(String argsString) {
-        return CompletableFuture.completedFuture(RESPONSE_INVALID_INPUT);
+        final String key = argsString.strip();
+
+        if (key.isEmpty()) {
+            return CompletableFuture.completedFuture(RESPONSE_INVALID_INPUT + " (Usage: DELETE <key>)");
+        }
+
+        if (!storageEngine.exists(key)) {
+           return CompletableFuture.completedFuture(RESPONSE_NOT_FOUND);
+        }
+
+        try {
+            return storageEngine.delete(key);
+        } catch (final IOException e) {
+            return CompletableFuture.failedFuture(e);
+        }
     }
 
     private CompletableFuture<String> handleGet(final String argsString) {
@@ -91,6 +108,10 @@ public class MangoDB {
 
         final String key = argsString.substring(0, firstSpaceIndex);
         final String value = argsString.substring(firstSpaceIndex + 1).strip();
+
+        if (value.equals(TOMBSTONE_VALUE)) {
+            return CompletableFuture.completedFuture(RESERVED_KEYWORD_TOMBSTONE);
+        }
 
         return storageEngine.writeToQueue(key, value);
     }

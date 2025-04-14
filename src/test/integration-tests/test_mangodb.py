@@ -37,9 +37,19 @@ def test_put_get_multiple():
     assert send_command("GET key1") == "value2\n"
 
 def test_get_nonexistent():
-    assert send_command("GET key1gurlkjdiutlwqke") == "NOT FOUND\n"
+    assert send_command("GET random_234123652346") == "NOT FOUND\n"
 
 def test_invalid_command():
     assert send_command("FLUSH") == "INVALID INPUT\n"
-    assert send_command("DELETE key1") == "INVALID INPUT\n"
     assert send_command("MAY key1") == "INVALID INPUT\n"
+
+def test_attempt_writing_tombstone():
+    assert send_command("PUT key1 __TOMBSTONE__") == "RESERVED KEYWORD __TOMBSTONE__\n"
+
+def test_delete_nonexistent():
+    assert send_command("DELETE random_1234123412") == "NOT FOUND\n"
+
+def test_delete_key():
+    assert send_command("PUT key3 value3") == "OK\n"
+    assert send_command("DELETE key3") == "OK\n"
+    assert send_command("DELETE key3") == "NOT FOUND\n"

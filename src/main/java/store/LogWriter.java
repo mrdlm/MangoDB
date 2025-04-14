@@ -6,8 +6,10 @@ import java.nio.channels.FileChannel;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 public class LogWriter {
+    public static final String TOMBSTONE_VALUE = "__TOMBSTONE__";
     private FileChannel fileChannel;
     private String activeFileName;
 
@@ -115,5 +117,16 @@ public class LogWriter {
             // Let the caller handle completing futures exceptionally
             throw e;
         }
+    }
+
+    public CompletableFuture<String> delete(final String key) throws IOException {
+        final long timestamp = System.currentTimeMillis();
+        final CompletableFuture<String> future = new CompletableFuture<>();
+
+        final List<WriteRequest> batch = List.of(new WriteRequest(key, TOMBSTONE_VALUE, timestamp, future));
+        writeBatch(batch);
+
+        future.complete("OK");
+        return future;
     }
 }
