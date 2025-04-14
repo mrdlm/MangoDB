@@ -6,7 +6,7 @@ import java.util.concurrent.CompletableFuture;
 
 public class MangoDB {
     public static final String RESPONSE_INVALID_INPUT = "INVALID INPUT";
-    private static final String RESPONSE_NOT_FOUND = "NOT_FOUND";
+    private static final String RESPONSE_NOT_FOUND = "NOT FOUND";
     private final StorageEngine storageEngine;
 
     private static final String RESPONSE_EMPTY_INPUT = "";
@@ -37,6 +37,7 @@ public class MangoDB {
            argsString = input.substring(firstSpaceIndex + 1).strip();
        }
 
+       System.out.println("Received command: " + command);
         return switch (command) {
             case CMD_PUT -> handlePut(argsString);
             case CMD_GET -> handleGet(argsString);
@@ -88,7 +89,7 @@ public class MangoDB {
             return CompletableFuture.completedFuture(RESPONSE_INVALID_INPUT + " (Usage: PUT <key> <value>)");
         }
 
-        final String key = argsString.substring(0, firstSpaceIndex).toUpperCase();
+        final String key = argsString.substring(0, firstSpaceIndex);
         final String value = argsString.substring(firstSpaceIndex + 1).strip();
 
         return storageEngine.writeToQueue(key, value);

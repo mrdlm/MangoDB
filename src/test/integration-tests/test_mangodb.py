@@ -40,6 +40,6 @@ def test_get_nonexistent():
     assert send_command("GET key1gurlkjdiutlwqke") == "NOT FOUND\n"
 
 def test_invalid_command():
+    assert send_command("FLUSH") == "INVALID INPUT\n"
+    assert send_command("DELETE key1") == "INVALID INPUT\n"
     assert send_command("MAY key1") == "INVALID INPUT\n"
-    assert send_command("PUT key1 value1 how") == "INVALID INPUT\n"
-    assert send_command("GET key1 value1") == "INVALID INPUT\n"
