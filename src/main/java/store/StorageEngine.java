@@ -242,4 +242,42 @@ public class StorageEngine {
         System.out.printf("Deleted key: %s\n", key);
         return logWriter.delete(key);
     }
+
+    public CompletableFuture<String> flush() {
+        System.out.printf("KeyDir size before flush: %d\n", keyDir.size());
+        keyDir.clear();
+        System.out.printf("KeyDir size after flush: %d\n", keyDir.size());
+
+        return CompletableFuture.completedFuture("OK");
+    }
+
+    public int getKeyDirSize() {
+        return keyDir.size();
+    }
+
+    public int getDiskSize() {
+        File directory = new File(PATH_TO_DATA_FILE);
+        File[] files = directory.listFiles();
+        int totalSize = 0;
+
+        if (files != null) {
+            for (final File file : files) {
+                if (file.isFile()) {
+                    totalSize += (int) file.length();
+                }
+            }
+        }
+        return totalSize;
+    }
+
+    public int getDataFilesCount() {
+        File directory = new File(PATH_TO_DATA_FILE);
+        File[] files = directory.listFiles();
+
+        if (files != null) {
+            return files.length;
+        }
+
+        return 0;
+    }
 }
