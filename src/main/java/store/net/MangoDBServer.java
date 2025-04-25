@@ -1,6 +1,6 @@
 package store.net;
 
-import store.StorageService;
+import store.engine.StorageService;
 
 import java.io.BufferedReader;
 import java.io.IOException;

@@ -1,4 +1,4 @@
-package store;
+package store.engine;
 
 import java.io.File;
 import java.io.IOException;
@@ -18,7 +18,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadLocalRandom;
 
-import static store.LogWriter.TOMBSTONE_VALUE;
+import static store.engine.LogWriter.TOMBSTONE_VALUE;
 
 record InMemRecord(long offset, String filename, long timestamp) {
 }

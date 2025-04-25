@@ -1,10 +1,10 @@
-package store;
+package store.engine;
 
 import java.io.IOException;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 
-import static store.LogWriter.TOMBSTONE_VALUE;
+import static store.engine.LogWriter.TOMBSTONE_VALUE;
 
 public class StorageService {
     public static final String RESPONSE_INVALID_INPUT = "INVALID INPUT";
