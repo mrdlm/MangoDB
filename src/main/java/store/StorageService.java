@@ -10,7 +10,9 @@ public class StorageService {
     public static final String RESPONSE_INVALID_INPUT = "INVALID INPUT";
     private static final String RESPONSE_NOT_FOUND = "NOT FOUND";
     public static final String RESERVED_KEYWORD_TOMBSTONE = "RESERVED KEYWORD __TOMBSTONE__";
+    private static final String CMD_STATUS = "STATUS";
     private final StorageEngine storageEngine;
+    private static long startTime;
 
     private static final String RESPONSE_EMPTY_INPUT = "";
     private static final String CMD_PUT = "PUT";
@@ -21,6 +23,7 @@ public class StorageService {
 
     public StorageService() throws IOException {
         storageEngine = new StorageEngine();
+        startTime = System.currentTimeMillis();
     }
 
     public CompletableFuture<String> handle(final String input) {
@@ -30,11 +33,10 @@ public class StorageService {
 
        int firstSpaceIndex = input.indexOf(" ");
        String command;
-       String argsString;
+       String argsString = "";
 
        if (firstSpaceIndex == -1) {
            command = input.toUpperCase();
-           return CompletableFuture.completedFuture(RESPONSE_INVALID_INPUT);
        } else {
            command = input.substring(0, firstSpaceIndex).toUpperCase();
            argsString = input.substring(firstSpaceIndex + 1).strip();
@@ -47,8 +49,23 @@ public class StorageService {
             case CMD_DELETE -> handleDelete(argsString);
             case CMD_FLUSH -> handleFlush();
             case CMD_EXISTS -> handleExists(argsString);
+            case CMD_STATUS -> handleStatus();
             default -> CompletableFuture.completedFuture(RESPONSE_INVALID_INPUT);
         };
+    }
+
+    private CompletableFuture<String> handleStatus() {
+        final long timeFromStartSeconds = (System.currentTimeMillis() - startTime) / 1000;
+        final int keyDirSize = storageEngine.getKeyDirSize();
+        final int diskSize = storageEngine.getDiskSize();
+        final int dataFilesCount = storageEngine.getDataFilesCount();
+
+        final String status = String.format(
+                "Disk Size: %d bytes\nData files counts: %d\nKey Dir Size: %d bytes\nTime from start: %d seconds\n",
+                diskSize, dataFilesCount, keyDirSize, timeFromStartSeconds
+        );
+
+        return CompletableFuture.completedFuture(status);
     }
 
     private CompletableFuture<String> handleExists(final String argsString) {
@@ -63,7 +80,8 @@ public class StorageService {
     }
 
     private CompletableFuture<String> handleFlush() {
-        return CompletableFuture.completedFuture(RESPONSE_INVALID_INPUT);
+        System.out.println("Received command: " + CMD_FLUSH);
+        return storageEngine.flush();
     }
 
     private CompletableFuture<String> handleDelete(String argsString) {
@@ -100,6 +118,10 @@ public class StorageService {
     }
 
     private CompletableFuture<String> handlePut(final String argsString) {
+        if (argsString.isEmpty()) {
+            return CompletableFuture.completedFuture(RESPONSE_INVALID_INPUT + " (Usage: PUT <key> <value>)");
+        }
+
         int firstSpaceIndex = argsString.indexOf(" ");
 
         if (firstSpaceIndex == -1 || firstSpaceIndex == argsString.length() - 1) {
