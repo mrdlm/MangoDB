@@ -1,20 +1,56 @@
 # MangoDB 
 
-MangoDB is a clone of BitCask written in Java 17. The purpose of this project is to learn how BitCask works and to benchmark its performance when 
-implemented in Java. The original BitCask, used as part of Riak, is written in Erlang. 
+MangoDB is a durable, high-performance key-value store built in Java. Originally inspired by Riak's BitCask storage engine, it uses an append-only log structure for high write throughput. But unlike BitCask, It is designed to leverage all the underlying CPUs of a machine for maximum performance. 
 
-## How to Run 
+## Getting Started
 
-`chmod +x run.sh` (only needed once)
-`./run.sh`
+### Prerequisites
 
-## How to run integration tests
+* **Java:** A Java Development Kit (JDK), version 17 or later, is required to build and run the server.
+* **Python:** Python 3 and `pip` are needed to run the integration tests.
 
-`pip install -r requirements.txt`
-`pytest`
+### Building the Project
 
-## Available Operations
+```bash
+# Make the script executable (only needed once)
+chmod +x run.sh
 
-`PUT key value` to add a key-value part
-`GET key` to get value for the key
+# Build and run the server
+./run.sh
 
+# Run the integration tests
+pip install -r requirements.txt
+pytest
+```
+
+## Operations
+
+The key-value store supports the following operations. Commands are case-insensitive.
+
+* **PUT**: Stores a key-value pair.
+    * **Usage:** `PUT <key> <value>`
+    * **Example:** `PUT mykey myvalue`
+    * **Response:** `OK` on success. Returns `RESERVED KEYWORD __TOMBSTONE__` if the value is `__TOMBSTONE__`. Returns `INVALID INPUT` if the format is incorrect.
+
+* **GET**: Retrieves the value associated with a given key.
+    * **Usage:** `GET <key>`
+    * **Example:** `GET mykey`
+    * **Response:** The value associated with the key, or `NOT FOUND` if the key does not exist. Returns `INVALID INPUT` if the format is incorrect.
+
+* **DELETE**: Marks a key for deletion (writes a tombstone record).
+    * **Usage:** `DELETE <key>`
+    * **Example:** `DELETE mykey`
+    * **Response:** `OK` on success, or `NOT FOUND` if the key does not exist. Returns `INVALID INPUT` if the format is incorrect.
+
+* **EXISTS**: Checks if a key exists in the store (and is not deleted).
+    * **Usage:** `EXISTS <key>`
+    * **Example:** `EXISTS mykey`
+    * **Response:** `true` if the key exists, `false` otherwise. Returns `INVALID INPUT` if the format is incorrect.
+
+* **FLUSH**: Deletes all the keys in the store.
+    * **Usage:** `FLUSH`
+    * **Response:** `OK` on success.
+
+* **STATUS**: Retrieves statistics about the storage engine.
+    * **Usage:** `STATUS`
+    * **Response:** A multi-line string containing Disk Size, Data File Counts, Key Directory Size, and Time Since Start-up.
