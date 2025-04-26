@@ -55,13 +55,13 @@ def test_delete_key():
 
 def test_flush_db():
     assert send_command("PUT key1 value1") == "OK\n"
-    assert send_command("GET key1" == "value1\n")
+    assert send_command("GET key1") == "value1\n"
 
     assert send_command("PUT key2 value2") == "OK\n"
-    assert send_command("GET key2" == "value2\n")
+    assert send_command("GET key2") == "value2\n"
 
     assert send_command("PUT key3 value3") == "OK\n"
-    assert send_command("GET key3" == "value3\n")
+    assert send_command("GET key3") == "value3\n"
 
     assert send_command("FLUSH") == "OK\n"
 
