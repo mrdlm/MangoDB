@@ -10,6 +10,7 @@ import java.util.concurrent.CompletableFuture;
 
 public class LogWriter {
     public static final String TOMBSTONE_VALUE = "__TOMBSTONE__";
+    public static final String FLUSH_TOMBSTONE_VALUE = "__FLUSH_TOMBSTONE__";
     private FileChannel fileChannel;
     private String activeFileName;
 
@@ -59,9 +60,6 @@ public class LogWriter {
         }
     }
 
-    public void flush() throws IOException {
-        fileChannel.force(true);
-    }
 
     public List<Long> writeBatch(final List<WriteRequest> batch) throws IOException {
         if (batch == null || batch.isEmpty()) {
@@ -124,6 +122,17 @@ public class LogWriter {
         final CompletableFuture<String> future = new CompletableFuture<>();
 
         final List<WriteRequest> batch = List.of(new WriteRequest(key, TOMBSTONE_VALUE, timestamp, future));
+        writeBatch(batch);
+
+        future.complete("OK");
+        return future;
+    }
+
+    public CompletableFuture<String> flush() throws IOException {
+        final long timestamp = System.currentTimeMillis();
+        final CompletableFuture<String> future = new CompletableFuture<>();
+
+        final List<WriteRequest> batch = List.of(new WriteRequest(FLUSH_TOMBSTONE_VALUE, "", timestamp, future));
         writeBatch(batch);
 
         future.complete("OK");

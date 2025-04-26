@@ -6,6 +6,7 @@ import java.nio.channels.FileChannel;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -14,10 +15,13 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.stream.Collectors;
 
+import static store.engine.LogWriter.FLUSH_TOMBSTONE_VALUE;
 import static store.engine.LogWriter.TOMBSTONE_VALUE;
 
 record InMemRecord(long offset, String filename, long timestamp) {
@@ -205,7 +209,12 @@ public class StorageEngine {
     private void constructKeyDir() throws IOException {
         this.keyDir = new ConcurrentHashMap<>();
 
-        for (final String filename: fileToChannelMap.keySet()) {
+        // this needs to be ordered, alphabetically
+        List<String> sortedFileNames = fileToChannelMap.keySet().stream().sorted(Collections.reverseOrder()).toList();
+        long latestFlushTimestamp = Long.MIN_VALUE;
+
+        for (final String filename: sortedFileNames) {
+            System.out.printf("Reading data file: %s\n", filename);
             long offset = 0;
             final FileChannel fileChannel = fileToChannelMap.get(filename);
 
@@ -215,8 +224,18 @@ public class StorageEngine {
                     if (record.value().equals(TOMBSTONE_VALUE)) {
                         if (keyDir.containsKey(record.key()) && keyDir.get(record.key()).timestamp() < record.timestamp()) {
                             keyDir.remove(record.key());
+                            offset = record.offset() + 2;
                             continue;
                         }
+                    }
+
+                    if (record.key().equals(FLUSH_TOMBSTONE_VALUE)) {
+                        if (record.timestamp() > latestFlushTimestamp) {
+                            latestFlushTimestamp = record.timestamp();
+                        }
+
+                        offset = record.offset() + 2;
+                        continue;
                     }
 
                     if (keyDir.containsKey(record.key())) {
@@ -234,6 +253,16 @@ public class StorageEngine {
             }
         }
 
+        if (latestFlushTimestamp != Long.MIN_VALUE) {
+            for (final String key : keyDir.keySet()) {
+                // there's no other correct way to do this
+                // if we clear keyDir upon seeing
+                if (keyDir.get(key).timestamp() < latestFlushTimestamp) {
+                    keyDir.remove(key);
+                }
+            }
+        }
+
         System.out.printf("KeyDir constructed: %d\n", keyDir.size());
     }
 
@@ -243,12 +272,11 @@ public class StorageEngine {
         return logWriter.delete(key);
     }
 
-    public CompletableFuture<String> flush() {
+    public CompletableFuture<String> flush() throws IOException, ExecutionException, InterruptedException {
         System.out.printf("KeyDir size before flush: %d\n", keyDir.size());
         keyDir.clear();
         System.out.printf("KeyDir size after flush: %d\n", keyDir.size());
-
-        return CompletableFuture.completedFuture("OK");
+        return logWriter.flush();
     }
 
     public int getKeyDirSize() {

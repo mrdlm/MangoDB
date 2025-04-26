@@ -3,6 +3,7 @@ package store.engine;
 import java.io.IOException;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 
 import static store.engine.LogWriter.TOMBSTONE_VALUE;
 
@@ -26,7 +27,7 @@ public class StorageService {
         startTime = System.currentTimeMillis();
     }
 
-    public CompletableFuture<String> handle(final String input) {
+    public CompletableFuture<String> handle(final String input) throws IOException, ExecutionException, InterruptedException {
        if (Objects.isNull(input) || input.isEmpty()) {
            return CompletableFuture.completedFuture(RESPONSE_EMPTY_INPUT);
        }
@@ -61,7 +62,7 @@ public class StorageService {
         final int dataFilesCount = storageEngine.getDataFilesCount();
 
         final String status = String.format(
-                "Disk Size: %d bytes\nData files counts: %d\nKey Dir Size: %d bytes\nTime from start: %d seconds\n",
+                "Disk Size: %d bytes\nData Files Counts: %d\nKey Dir Size: %d\nTime From Start-up: %d seconds\n",
                 diskSize, dataFilesCount, keyDirSize, timeFromStartSeconds
         );
 
@@ -79,7 +80,7 @@ public class StorageService {
         return CompletableFuture.completedFuture(String.valueOf(result));
     }
 
-    private CompletableFuture<String> handleFlush() {
+    private CompletableFuture<String> handleFlush() throws IOException, ExecutionException, InterruptedException {
         System.out.println("Received command: " + CMD_FLUSH);
         return storageEngine.flush();
     }

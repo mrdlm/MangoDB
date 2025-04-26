@@ -8,6 +8,7 @@ import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -98,6 +99,8 @@ public class MangoDBServer {
            socketClient.close();
         } catch (final IOException e) {
             System.out.println("Error handling client: " + e.getMessage());
+            throw new RuntimeException(e);
+        } catch (ExecutionException | InterruptedException e) {
             throw new RuntimeException(e);
         }
     }
