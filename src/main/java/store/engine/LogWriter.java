@@ -8,6 +8,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
+import static store.engine.StorageService.ANSI_CYAN;
+import static store.engine.StorageService.ANSI_GREEN;
+import static store.engine.StorageService.ANSI_RESET;
+
 public class LogWriter {
     public static final String TOMBSTONE_VALUE = "__TOMBSTONE__";
     public static final String FLUSH_TOMBSTONE_VALUE = "__FLUSH_TOMBSTONE__";
@@ -124,7 +128,7 @@ public class LogWriter {
         final List<WriteRequest> batch = List.of(new WriteRequest(key, TOMBSTONE_VALUE, timestamp, future));
         writeBatch(batch);
 
-        future.complete("OK");
+        future.complete(ANSI_GREEN+ "OK\n" + ANSI_RESET);
         return future;
     }
 
@@ -135,7 +139,7 @@ public class LogWriter {
         final List<WriteRequest> batch = List.of(new WriteRequest(FLUSH_TOMBSTONE_VALUE, "", timestamp, future));
         writeBatch(batch);
 
-        future.complete("OK");
+        future.complete(ANSI_GREEN+ "OK\n" + ANSI_RESET);
         return future;
     }
 }

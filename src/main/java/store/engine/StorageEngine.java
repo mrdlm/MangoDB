@@ -23,6 +23,8 @@ import java.util.stream.Collectors;
 
 import static store.engine.LogWriter.FLUSH_TOMBSTONE_VALUE;
 import static store.engine.LogWriter.TOMBSTONE_VALUE;
+import static store.engine.StorageService.ANSI_GREEN;
+import static store.engine.StorageService.ANSI_RESET;
 
 record InMemRecord(long offset, String filename, long timestamp) {
 }
@@ -127,7 +129,7 @@ public class StorageEngine {
                 WriteRequest request = batch.get(i);
                 long offset = offsets.get(i);
                 keyDir.put(request.key(), new InMemRecord(offset, logWriter.getActiveFileName(), request.timestamp()));
-                request.future().complete("OK"); // Or some success indicator
+                request.future().complete(ANSI_GREEN + "OK\n" + ANSI_RESET); // Or some success indicator
             }
         }
     }

@@ -8,10 +8,17 @@ import java.util.concurrent.ExecutionException;
 import static store.engine.LogWriter.TOMBSTONE_VALUE;
 
 public class StorageService {
+    public static final String ANSI_RESET = "\u001B[0m";
+    public static final String ANSI_GREEN = "\u001B[32m";
+    public static final String ANSI_YELLOW = "\u001B[33m";
+    public static final String ANSI_RED = "\u001B[31m";
+    public static final String ANSI_CYAN = "\u001B[36m";
+
     public static final String RESPONSE_INVALID_INPUT = "INVALID INPUT";
     private static final String RESPONSE_NOT_FOUND = "NOT FOUND";
     public static final String RESERVED_KEYWORD_TOMBSTONE = "RESERVED KEYWORD __TOMBSTONE__";
     private static final String CMD_STATUS = "STATUS";
+    private static final String CMD_HELP = "HELP";
     private final StorageEngine storageEngine;
     private static long startTime;
 
@@ -51,7 +58,8 @@ public class StorageService {
             case CMD_FLUSH -> handleFlush();
             case CMD_EXISTS -> handleExists(argsString);
             case CMD_STATUS -> handleStatus();
-            default -> CompletableFuture.completedFuture(RESPONSE_INVALID_INPUT);
+            case CMD_HELP -> handleHelp();
+            default -> CompletableFuture.completedFuture(ANSI_RED + RESPONSE_INVALID_INPUT + "\n" + ANSI_RESET);
         };
     }
 
@@ -61,9 +69,14 @@ public class StorageService {
         final int diskSize = storageEngine.getDiskSize();
         final int dataFilesCount = storageEngine.getDataFilesCount();
 
-        final String status = String.format(
-                "Disk Size: %d bytes\nData Files Counts: %d\nKey Dir Size: %d\nTime From Start-up: %d seconds\n",
-                diskSize, dataFilesCount, keyDirSize, timeFromStartSeconds
+        final String status = String.format(ANSI_CYAN + """
+                🌟 MangoDB Node Status
+                ─────────────────────────────
+                Disk Size:           %.2f MB
+                Data Files:          %d
+                KeyDir Entries:      %d
+                Uptime:              %d seconds
+                \n""" + ANSI_RESET, diskSize / (1024.0 * 1024.0), dataFilesCount, keyDirSize, timeFromStartSeconds
         );
 
         return CompletableFuture.completedFuture(status);
@@ -73,27 +86,39 @@ public class StorageService {
         final String key = argsString.strip();
 
         if (key.isEmpty()) {
-            return CompletableFuture.completedFuture(RESPONSE_INVALID_INPUT + " (Usage: EXISTS <key>)");
+            return CompletableFuture.completedFuture(ANSI_RED + RESPONSE_INVALID_INPUT + " (Usage: EXISTS <key>)\n" + ANSI_RESET);
         }
 
         final Boolean result = storageEngine.exists(key);
-        return CompletableFuture.completedFuture(String.valueOf(result));
+        return CompletableFuture.completedFuture(ANSI_YELLOW + result + "\n" + ANSI_RESET);
     }
 
     private CompletableFuture<String> handleFlush() throws IOException, ExecutionException, InterruptedException {
-        System.out.println("Received command: " + CMD_FLUSH);
         return storageEngine.flush();
+    }
+
+    private CompletableFuture<String> handleHelp() throws IOException, ExecutionException, InterruptedException {
+        return CompletableFuture.completedFuture(ANSI_CYAN + """
+        Available Commands:
+        - PUT <key> <value>
+        - GET <key>
+        - DELETE <key>
+        - EXISTS <key>
+        - FLUSH
+        - STATUS
+        - HELP\n
+        """ + ANSI_RESET);
     }
 
     private CompletableFuture<String> handleDelete(String argsString) {
         final String key = argsString.strip();
 
         if (key.isEmpty()) {
-            return CompletableFuture.completedFuture(RESPONSE_INVALID_INPUT + " (Usage: DELETE <key>)");
+            return CompletableFuture.completedFuture(ANSI_RED + RESPONSE_INVALID_INPUT + " (Usage: DELETE <key>)\n" + ANSI_RESET);
         }
 
         if (!storageEngine.exists(key)) {
-           return CompletableFuture.completedFuture(RESPONSE_NOT_FOUND);
+           return CompletableFuture.completedFuture(ANSI_YELLOW + RESPONSE_NOT_FOUND + ANSI_RESET);
         }
 
         try {
@@ -107,12 +132,17 @@ public class StorageService {
         final String key = argsString.strip();
 
         if (key.isEmpty()) {
-            return CompletableFuture.completedFuture(RESPONSE_INVALID_INPUT + " (Usage: GET <key>)");
+            return CompletableFuture.completedFuture(ANSI_RED + RESPONSE_INVALID_INPUT + " (Usage: GET <key>)\n" + ANSI_RESET);
         }
 
         try {
             final String value = storageEngine.read(key);
-            return CompletableFuture.completedFuture(Objects.requireNonNullElse(value, RESPONSE_NOT_FOUND));
+
+            if (value == null) {
+                return CompletableFuture.completedFuture(ANSI_YELLOW + RESPONSE_NOT_FOUND + "\n" + ANSI_RESET);
+            }
+
+            return CompletableFuture.completedFuture(ANSI_YELLOW + value + "\n" + ANSI_RESET);
         } catch (final IOException e) {
             return CompletableFuture.failedFuture(e);
         }
@@ -120,20 +150,20 @@ public class StorageService {
 
     private CompletableFuture<String> handlePut(final String argsString) {
         if (argsString.isEmpty()) {
-            return CompletableFuture.completedFuture(RESPONSE_INVALID_INPUT + " (Usage: PUT <key> <value>)");
+            return CompletableFuture.completedFuture(ANSI_RED + RESPONSE_INVALID_INPUT + " (Usage: PUT <key> <value>)\n" + ANSI_RESET);
         }
 
         int firstSpaceIndex = argsString.indexOf(" ");
 
         if (firstSpaceIndex == -1 || firstSpaceIndex == argsString.length() - 1) {
-            return CompletableFuture.completedFuture(RESPONSE_INVALID_INPUT + " (Usage: PUT <key> <value>)");
+            return CompletableFuture.completedFuture(ANSI_RED + RESPONSE_INVALID_INPUT + " (Usage: PUT <key> <value>)\n" + ANSI_RESET);
         }
 
         final String key = argsString.substring(0, firstSpaceIndex);
         final String value = argsString.substring(firstSpaceIndex + 1).strip();
 
         if (value.equals(TOMBSTONE_VALUE)) {
-            return CompletableFuture.completedFuture(RESERVED_KEYWORD_TOMBSTONE);
+            return CompletableFuture.completedFuture(ANSI_RED + RESERVED_KEYWORD_TOMBSTONE + "\n" + ANSI_RESET);
         }
 
         return storageEngine.writeToQueue(key, value);
