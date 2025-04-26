@@ -40,7 +40,6 @@ def test_get_nonexistent():
     assert send_command("GET random_234123652346") == "NOT FOUND\n"
 
 def test_invalid_command():
-    assert send_command("FLUSH") == "INVALID INPUT\n"
     assert send_command("MAY key1") == "INVALID INPUT\n"
 
 def test_attempt_writing_tombstone():
@@ -53,3 +52,19 @@ def test_delete_key():
     assert send_command("PUT key3 value3") == "OK\n"
     assert send_command("DELETE key3") == "OK\n"
     assert send_command("DELETE key3") == "NOT FOUND\n"
+
+def test_flush_db():
+    assert send_command("PUT key1 value1") == "OK\n"
+    assert send_command("GET key1") == "value1\n"
+
+    assert send_command("PUT key2 value2") == "OK\n"
+    assert send_command("GET key2") == "value2\n"
+
+    assert send_command("PUT key3 value3") == "OK\n"
+    assert send_command("GET key3") == "value3\n"
+
+    assert send_command("FLUSH") == "OK\n"
+
+    assert send_command("GET key1") == "NOT FOUND\n"
+    assert send_command("GET key2") == "NOT FOUND\n"
+    assert send_command("GET key3") == "NOT FOUND\n"
