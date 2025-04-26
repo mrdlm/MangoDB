@@ -19,7 +19,6 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadLocalRandom;
-import java.util.stream.Collectors;
 
 import static store.engine.LogWriter.FLUSH_TOMBSTONE_VALUE;
 import static store.engine.LogWriter.TOMBSTONE_VALUE;

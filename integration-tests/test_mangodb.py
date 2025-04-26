@@ -1,9 +1,14 @@
 import pytest
 import socket
 import time
+import re
 
 HOST = 'localhost'
 PORT = 8080  # Port used in MangoDBServer.java
+
+def strip_ansi(text):
+    ansi_escape = re.compile(r'\x1b\[[0-9;]*m')
+    return ansi_escape.sub('', text).replace("\n\n", "\n")
 
 def send_command(command):
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
@@ -23,7 +28,7 @@ def send_command(command):
         except Exception as e:
             pytest.fail(f"Unexpected error: {e}")
 
-        return response
+        return strip_ansi(response)
 
 # -- Test Cases ---
 
