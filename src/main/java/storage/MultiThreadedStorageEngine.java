@@ -10,7 +10,7 @@ public class MultiThreadedStorageEngine implements StorageEngine {
     }
 
     @Override
-    public CompletableFuture<Optional<String>> read(String key, String value) {
+    public CompletableFuture<String> read(String key, String value) {
         return null;
     }
 

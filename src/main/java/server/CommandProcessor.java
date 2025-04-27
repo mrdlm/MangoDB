@@ -3,10 +3,12 @@ package server;
 import commands.Command;
 import commands.CommandParser;
 import config.ConfigManager;
+import jdk.jshell.SourceCodeAnalysis;
 import storage.MultiThreadedStorageEngine;
 import storage.SingleThreadedStorageEngine;
 import storage.StorageEngine;
 
+import java.io.IOException;
 import java.util.concurrent.CompletableFuture;
 
 public class CommandProcessor {
@@ -18,7 +20,13 @@ public class CommandProcessor {
     public static final String ANSI_RED = "\u001B[31m";
     public static final String ANSI_CYAN = "\u001B[36m";
 
+    public static final String WRAP_GREEN = ANSI_GREEN + "%s\n" + ANSI_RESET;
+    public static final String WRAP_RED = ANSI_RED + "%s\n" + ANSI_RESET;
+    public static final String WRAP_CYAN = ANSI_CYAN+ "%s\n" + ANSI_RESET;
+    public static final String WRAP_YELLOW = ANSI_YELLOW + "%s\n" + ANSI_RESET;
+
     public static final String RESPONSE_INVALID_INPUT = "INVALID INPUT";
+    public static final String RESPONSE_OK = "OK";
     private static final String RESPONSE_NOT_FOUND = "NOT FOUND";
     public static final String RESERVED_KEYWORD_TOMBSTONE = "RESERVED KEYWORD __TOMBSTONE__";
     private static final String CMD_STATUS = "STATUS";
@@ -32,7 +40,7 @@ public class CommandProcessor {
     private static final String CMD_FLUSH = "FLUSH";
     private static final String CMD_EXISTS = "EXISTS";
 
-    public CommandProcessor() {
+    public CommandProcessor() throws IOException {
 
         ConfigManager configManager = new ConfigManager("config.properties");
         String engineType = configManager.getProperty("storage.type");
@@ -55,8 +63,9 @@ public class CommandProcessor {
         };
     }
 
-    private CompletableFuture<String> handlePut(String[] args) {
-        return CompletableFuture.completedFuture("OK");
+    private CompletableFuture<String> handlePut(final String[] args) {
+        final CompletableFuture<Void> writeFuture = storageEngine.write(args[0], args[1]);
+        return writeFuture.thenApply(voidResult -> args[0]);
     }
 
     private CompletableFuture<String> handleGet(String[] args) {

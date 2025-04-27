@@ -33,6 +33,19 @@ public class ConfigManager {
         return properties.getProperty(key, defaultValue);
     }
 
+    public boolean getBooleanProperty(String key, boolean defaultValue) {
+        final String value = getProperty(key);
+        if (value != null) {
+            try {
+                return Boolean.parseBoolean(value);
+            } catch (final Exception e) {
+                System.err.println("Error parsing property '" + key + "': " + e.getMessage());
+            }
+        }
+
+        return defaultValue;
+    }
+
     public int getIntProperty(String key, int defaultValue) {
         final String value = getProperty(key);
         if (value != null) {

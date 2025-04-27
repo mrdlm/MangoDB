@@ -27,7 +27,7 @@ func main() {
 
 	fmt.Println("Starting benchmark with random keys and values...\n\n")
 	// runSingleConnectionBenchmark()
-	runMultiConnectionBenchmark(50, 1000) // 10 connections, 1000 requests per connection
+	runMultiConnectionBenchmark(400, 10000) // 10 connections, 1000 requests per connection
 }
 
 func runMultiConnectionBenchmark(numConnections, numRequestsPerConnection int) {
@@ -69,15 +69,17 @@ func runMultiConnectionBenchmark(numConnections, numRequestsPerConnection int) {
 			for j := 0; j < numRequestsPerConnection; j += pipelineSize {
 
 				requestsInBatch := pipelineSize
-
 				if j+pipelineSize > numRequestsPerConnection {
 					requestsInBatch = numRequestsPerConnection - j
 				}
+
+				batchKeys := make([]string, requestsInBatch)
 
 				for k := 0; k < requestsInBatch; k++ {
 					key := generateRandomString(5)
 					value := generateRandomString(100)
 
+					batchKeys[k] = key
 					cmd := fmt.Sprintf("PUT %s %s\n", key, value)
 					_, err := writer.WriteString(cmd)
 
@@ -94,11 +96,19 @@ func runMultiConnectionBenchmark(numConnections, numRequestsPerConnection int) {
 				}
 
 				for k := 0; k < requestsInBatch; k++ {
-					_, err = reader.ReadString('\n')
+					response, err := reader.ReadString('\n')
+
 					if err != nil {
 						fmt.Println("Read failed on connection after successful write:", err)
 						break
 					}
+
+					response = response[:len(response)-1]
+					if response != batchKeys[k] {
+						fmt.Printf("Read values mismatch %s, %s\n", batchKeys[k], response)
+						continue
+					}
+
 					localSuccessCount++
 				}
 			}
