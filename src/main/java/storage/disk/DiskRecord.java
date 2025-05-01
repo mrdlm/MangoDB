@@ -1,4 +1,4 @@
-package store.engine;
+package storage.disk;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;

@@ -1,6 +1,6 @@
-package store.net;
+package legacy.net;
 
-import store.engine.StorageService;
+import legacy.engine.StorageService;
 
 import java.io.BufferedReader;
 import java.io.IOException;

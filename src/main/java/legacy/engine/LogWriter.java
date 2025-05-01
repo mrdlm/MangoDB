@@ -1,4 +1,4 @@
-package store.engine;
+package legacy.engine;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -8,9 +8,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
-import static store.engine.StorageService.ANSI_CYAN;
-import static store.engine.StorageService.ANSI_GREEN;
-import static store.engine.StorageService.ANSI_RESET;
+import static legacy.engine.StorageService.ANSI_GREEN;
+import static legacy.engine.StorageService.ANSI_RESET;
 
 public class LogWriter {
     public static final String TOMBSTONE_VALUE = "__TOMBSTONE__";

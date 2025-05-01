@@ -1,11 +1,11 @@
-package store.engine;
+package legacy.engine;
 
 import java.io.IOException;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 
-import static store.engine.LogWriter.TOMBSTONE_VALUE;
+import static legacy.engine.LogWriter.TOMBSTONE_VALUE;
 
 public class StorageService {
     public static final String ANSI_RESET = "\u001B[0m";
