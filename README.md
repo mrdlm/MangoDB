@@ -1,7 +1,7 @@
 # MangoDB 
 ![MangoDB Logo](./assets/logo_small.jpg)
 
-MangoDB is a durable, high-performance key-value store built in Java. Originally inspired by Riak's BitCask storage engine, it uses an append-only log structure for high write throughput. But unlike BitCask, It is designed to leverage all the underlying CPUs of a machine for maximum performance. 
+MangoDB is a durable, high-performance key-value legacy built in Java. Originally inspired by Riak's BitCask storage engine, it uses an append-only log structure for high write throughput. But unlike BitCask, It is designed to leverage all the underlying CPUs of a machine for maximum performance. 
 
 ## Getting Started
 
@@ -26,7 +26,7 @@ pytest
 
 ## Operations
 
-The key-value store supports the following operations. Commands are case-insensitive.
+The key-value legacy supports the following operations. Commands are case-insensitive.
 
 * **PUT**: Stores a key-value pair.
     * **Usage:** `PUT <key> <value>`
@@ -43,12 +43,12 @@ The key-value store supports the following operations. Commands are case-insensi
     * **Example:** `DELETE mykey`
     * **Response:** `OK` on success, or `NOT FOUND` if the key does not exist. Returns `INVALID INPUT` if the format is incorrect.
 
-* **EXISTS**: Checks if a key exists in the store (and is not deleted).
+* **EXISTS**: Checks if a key exists in the legacy (and is not deleted).
     * **Usage:** `EXISTS <key>`
     * **Example:** `EXISTS mykey`
     * **Response:** `true` if the key exists, `false` otherwise. Returns `INVALID INPUT` if the format is incorrect.
 
-* **FLUSH**: Deletes all the keys in the store.
+* **FLUSH**: Deletes all the keys in the legacy.
     * **Usage:** `FLUSH`
     * **Response:** `OK` on success.
 

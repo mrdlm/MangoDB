@@ -28,6 +28,7 @@ public class MangoServer {
 
     private boolean running = true;
 
+
     public MangoServer() throws IOException {
         ConfigManager manager = new ConfigManager("config.properties");
         this.port = manager.getIntProperty("port", 8080);
@@ -65,15 +66,6 @@ public class MangoServer {
     }
 
     public void start() {
-        String banner = """
-                ███╗   ███╗ █████╗ ███╗   ██╗ ██████╗  ██████╗ ██████╗ ██████╗\s
-                ████╗ ████║██╔══██╗████╗  ██║██╔════╝ ██╔═══██╗██╔══██╗██╔══██╗
-                ██╔████╔██║███████║██╔██╗ ██║██║  ███╗██║   ██║██║  ██║██████╔╝
-                ██║╚██╔╝██║██╔══██║██║╚██╗██║██║   ██║██║   ██║██║  ██║██╔══██╗
-                ██║ ╚═╝ ██║██║  ██║██║ ╚████║╚██████╔╝╚██████╔╝██████╔╝██████╔╝
-                ╚═╝     ╚═╝╚═╝  ╚═╝╚═╝  ╚═══╝ ╚═════╝  ╚═════╝ ╚═════╝ ╚═════╝\s 
-                """ ;
-        System.out.println(banner);
         logger.info("MangoServer starting...");
         logger.info("Server thread count: {}", threadCount);
         logger.info("Ordered response: {}", orderedResponse);
@@ -115,9 +107,8 @@ public class MangoServer {
             String line;
             while ((line = in.readLine()) != null) {
                 // logger.debug("received: {}", line);
-
-                final CompletableFuture<String> response = commandProcessor.process(line)
-                        .thenApply(result -> {
+                 final CompletableFuture<String> response = commandProcessor.process(line)
+                         .thenApply(result -> {
                             out.println(result);
                             return result;
                         })

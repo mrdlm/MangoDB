@@ -15,6 +15,11 @@ public class SerialDiskStore implements DiskStore {
     public String read(long offset, final FileChannel readFileChannel) {
         try {
             final DiskRecord record = DiskRecord.readFrom(readFileChannel, offset);
+
+            if (record == null) {
+                throw new RuntimeException("Data file size is less than the provided offset. Data is possibly corrupted.");
+            }
+
             return record.value();
         } catch (final IOException e) {
             throw new RuntimeException(e);
@@ -22,7 +27,7 @@ public class SerialDiskStore implements DiskStore {
     }
 
     @Override
-    public List<Long> write(List<AsyncWriteRequest> batch, FileChannel fileChannel) {
+    public List<WriteResult> write(List<AsyncWriteRequest> batch, FileChannel fileChannel) {
         if (batch == null || batch.isEmpty()) {
             return new ArrayList<>();
         }
@@ -41,7 +46,7 @@ public class SerialDiskStore implements DiskStore {
         }
 
         final ByteBuffer batchBuffer = ByteBuffer.allocate(totalSize);
-        final List<Long> offsets = new ArrayList<>(batch.size());
+        final List<WriteResult> writeResults = new ArrayList<>(batch.size());
         long currentOffset = -1; // Will be set before the first write
 
         try {
@@ -49,13 +54,13 @@ public class SerialDiskStore implements DiskStore {
             currentOffset = batchStartOffset;
 
             for (int i = 0; i < batch.size(); i++) {
-                AsyncWriteRequest request = batch.get(i);
                 byte[] keyBytes = keyBytesList.get(i);
                 byte[] valueBytes = valueBytesList.get(i);
 
-                offsets.add(currentOffset); // Store offset for this record
+                long timestamp = System.currentTimeMillis();
+                writeResults.add(new WriteResult(currentOffset, timestamp));
 
-                batchBuffer.putLong(request.timestamp()); // Use request timestamp
+                batchBuffer.putLong(timestamp);
                 batchBuffer.putInt(keyBytes.length);
                 batchBuffer.putInt(valueBytes.length);
                 batchBuffer.put(keyBytes);
@@ -71,7 +76,7 @@ public class SerialDiskStore implements DiskStore {
             }
 
             // System.out.printf("Wrote batch of %d records to disk (%s)\n", batch.size(), activeFileName);
-            return offsets;
+            return writeResults;
         } catch (final IOException e) {
             System.err.println("Error writing batch log: " + e.getMessage());
             // Let the caller handle completing futures exceptionally

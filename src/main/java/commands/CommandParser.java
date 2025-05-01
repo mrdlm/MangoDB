@@ -13,8 +13,8 @@ import static commands.CommandType.GET;
 import static commands.CommandType.HELP;
 import static commands.CommandType.PUT;
 import static commands.CommandType.STATUS;
-import static store.engine.LogWriter.FLUSH_TOMBSTONE_VALUE;
-import static store.engine.LogWriter.TOMBSTONE_VALUE;
+import static legacy.engine.LogWriter.FLUSH_TOMBSTONE_VALUE;
+import static legacy.engine.LogWriter.TOMBSTONE_VALUE;
 
 public class CommandParser {
 

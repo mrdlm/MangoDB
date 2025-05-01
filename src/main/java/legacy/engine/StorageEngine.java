@@ -1,4 +1,4 @@
-package store.engine;
+package legacy.engine;
 
 import java.io.File;
 import java.io.IOException;
@@ -20,10 +20,10 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadLocalRandom;
 
-import static store.engine.LogWriter.FLUSH_TOMBSTONE_VALUE;
-import static store.engine.LogWriter.TOMBSTONE_VALUE;
-import static store.engine.StorageService.ANSI_GREEN;
-import static store.engine.StorageService.ANSI_RESET;
+import static legacy.engine.LogWriter.FLUSH_TOMBSTONE_VALUE;
+import static legacy.engine.LogWriter.TOMBSTONE_VALUE;
+import static legacy.engine.StorageService.ANSI_GREEN;
+import static legacy.engine.StorageService.ANSI_RESET;
 
 record InMemRecord(long offset, String filename, long timestamp) {
 }

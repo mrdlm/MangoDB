@@ -24,10 +24,8 @@ func generateRandomString(length int) string {
 }
 
 func main() {
-
 	fmt.Println("Starting benchmark with random keys and values...\n\n")
-	// runSingleConnectionBenchmark()
-	runMultiConnectionBenchmark(400, 10000) // 10 connections, 1000 requests per connection
+	runMultiConnectionBenchmark(200, 1000) // 10 connections, 1000 requests per connection
 }
 
 func runMultiConnectionBenchmark(numConnections, numRequestsPerConnection int) {

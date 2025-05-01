@@ -20,10 +20,10 @@ public class CommandProcessor {
     public static final String ANSI_RED = "\u001B[31m";
     public static final String ANSI_CYAN = "\u001B[36m";
 
-    public static final String WRAP_GREEN = ANSI_GREEN + "%s\n" + ANSI_RESET;
-    public static final String WRAP_RED = ANSI_RED + "%s\n" + ANSI_RESET;
-    public static final String WRAP_CYAN = ANSI_CYAN+ "%s\n" + ANSI_RESET;
-    public static final String WRAP_YELLOW = ANSI_YELLOW + "%s\n" + ANSI_RESET;
+    public static final String WRAP_GREEN = ANSI_GREEN + "%s" + ANSI_RESET;
+    public static final String WRAP_RED = ANSI_RED + "%s" + ANSI_RESET;
+    public static final String WRAP_CYAN = ANSI_CYAN+ "%s" + ANSI_RESET;
+    public static final String WRAP_YELLOW = ANSI_YELLOW + "%s" + ANSI_RESET;
 
     public static final String RESPONSE_INVALID_INPUT = "INVALID INPUT";
     public static final String RESPONSE_OK = "OK";
@@ -40,10 +40,13 @@ public class CommandProcessor {
     private static final String CMD_FLUSH = "FLUSH";
     private static final String CMD_EXISTS = "EXISTS";
 
+    private boolean returnKeysOnWrite;
+
     public CommandProcessor() throws IOException {
 
         ConfigManager configManager = new ConfigManager("config.properties");
         String engineType = configManager.getProperty("storage.type");
+        returnKeysOnWrite = configManager.getBooleanProperty("return.key.on.writes", false);
 
         switch (engineType) {
             case "single" -> storageEngine = new SingleThreadedStorageEngine();
@@ -53,22 +56,45 @@ public class CommandProcessor {
     }
 
     CompletableFuture<String> process(final String input) {
-        final Command command = CommandParser.parse(input);
+        try {
+            final Command command = CommandParser.parse(input);
 
-        assert command != null;
-        return switch (command.type()) {
-            case PUT -> handlePut(command.args());
-            case GET -> handleGet(command.args());
-            default -> CompletableFuture.completedFuture(RESPONSE_INVALID_INPUT);
-        };
+            if (command == null) {
+                return CompletableFuture.completedFuture(String.format(WRAP_RED, "ERROR: Unable to parse command"));
+            }
+
+            return switch (command.type()) {
+                case PUT -> handlePut(command.args());
+                case GET -> handleGet(command.args());
+                default -> CompletableFuture.completedFuture(String.format(WRAP_RED, "ERROR: " + RESPONSE_INVALID_INPUT));
+            };
+        } catch (final Exception e) {
+            return CompletableFuture.completedFuture(String.format(WRAP_RED, "ERROR: " + e.getMessage()));
+        }
     }
 
     private CompletableFuture<String> handlePut(final String[] args) {
-        final CompletableFuture<Void> writeFuture = storageEngine.write(args[0], args[1]);
-        return writeFuture.thenApply(voidResult -> args[0]);
+        final CompletableFuture<Void> responseFuture = storageEngine.write(args[0], args[1]);
+
+        return responseFuture.thenApply(voidResult -> {
+            if (returnKeysOnWrite) {
+                return args[0];
+            } else {
+                return String.format(WRAP_GREEN, RESPONSE_OK);
+            }
+        }).exceptionally(e -> String.format(WRAP_RED, "ERROR: " + e.getMessage()));
     }
 
-    private CompletableFuture<String> handleGet(String[] args) {
-        return CompletableFuture.completedFuture("OK");
+    private CompletableFuture<String> handleGet(final String[] args) {
+        final CompletableFuture<String> readFuture = storageEngine.read(args[0]);
+
+        return readFuture.thenApply(value -> {
+                if (value == null) {
+                    System.out.println(RESPONSE_NOT_FOUND);
+                    return  String.format(WRAP_RED, RESPONSE_NOT_FOUND);
+                }
+
+                return String.format(WRAP_YELLOW, value);
+        });
     }
 }

@@ -10,7 +10,7 @@ import java.util.concurrent.CompletableFuture;
 
 public interface DiskStore {
     String read(long offset, FileChannel readFileChannel) throws IOException;
-    List<Long> write(List<AsyncWriteRequest> batch, FileChannel writeFileChannel);
+    List<WriteResult> write(List<AsyncWriteRequest> batch, FileChannel writeFileChannel);
     void delete(long offset, FileChannel writeFileChannel);
     void flush();
 }
