@@ -1,7 +1,7 @@
 # MangoDB 
 ![MangoDB Logo](./assets/logo_small.jpg)
 
-MangoDB is a durable, high-performance key-value store built in Java. Originally inspired by Riak's BitCask storage engine, it uses an append-only log structure for high write throughput. But unlike BitCask, It is designed to leverage all the underlying CPUs of a machine for maximum performance. 
+MangoDB is a durable, high-speed key-value store built in Java 17. Originally inspired by Riak's BitCask storage engine, it uses an append-only log structure for high write throughput. While BitCask is single-threaded, MangoDB utilises all the underlying cores of a machine for maximal performance. 
 
 ## Getting Started
 
