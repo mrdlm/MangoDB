@@ -4,16 +4,17 @@ import commands.Command;
 import commands.CommandParser;
 import config.ConfigManager;
 import jdk.jshell.SourceCodeAnalysis;
+import replication.ReplicationManager;
 import storage.MultiThreadedStorageEngine;
 import storage.SingleThreadedStorageEngine;
 import storage.StorageEngine;
+import tree.ServerRole;
 
 import java.io.IOException;
 import java.util.concurrent.CompletableFuture;
 
 public class CommandProcessor {
 
-    private StorageEngine storageEngine;
     public static final String ANSI_RESET = "\u001B[0m";
     public static final String ANSI_GREEN = "\u001B[32m";
     public static final String ANSI_YELLOW = "\u001B[33m";
@@ -40,6 +41,10 @@ public class CommandProcessor {
     private static final String CMD_FLUSH = "FLUSH";
     private static final String CMD_EXISTS = "EXISTS";
 
+    private StorageEngine storageEngine;
+    private ReplicationManager replicationManager;
+    private ServerRole serverRole = ServerRole.PRIMARY;
+
     private boolean returnKeysOnWrite;
 
     public CommandProcessor() throws IOException {
@@ -47,12 +52,21 @@ public class CommandProcessor {
         ConfigManager configManager = new ConfigManager("config.properties");
         String engineType = configManager.getProperty("storage.type");
         returnKeysOnWrite = configManager.getBooleanProperty("return.key.on.writes", false);
-
         switch (engineType) {
             case "single" -> storageEngine = new SingleThreadedStorageEngine();
             case "multi" -> storageEngine = new MultiThreadedStorageEngine();
             default -> throw new UnsupportedOperationException("Unsupported storage engine type specified");
         }
+    }
+
+    public CommandProcessor(final ServerRole role) throws IOException {
+        this();
+        this.serverRole = role;
+        replicationManager = new ReplicationManager();
+    }
+
+    public ServerRole getRole() {
+        return serverRole;
     }
 
     CompletableFuture<String> process(final String input) {
@@ -77,6 +91,10 @@ public class CommandProcessor {
         final CompletableFuture<Void> responseFuture = storageEngine.write(args[0], args[1]);
 
         return responseFuture.thenApply(voidResult -> {
+            if (serverRole == ServerRole.PRIMARY) {
+                replicationManager.asyncReplicate(args[0], args[1]);
+            }
+
             if (returnKeysOnWrite) {
                 return args[0];
             } else {

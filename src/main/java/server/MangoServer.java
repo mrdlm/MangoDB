@@ -3,6 +3,7 @@ package server;
 import config.ConfigManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import tree.ServerRole;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -42,6 +43,20 @@ public class MangoServer {
         registerShutdownHook();
     }
 
+    public MangoServer(final String role, final int port) throws IOException {
+        this.port = port;
+
+        ConfigManager manager = new ConfigManager("config.properties");
+
+        threadCount = manager.getIntProperty("server.threads", 1);
+        this.threadPool = Executors.newFixedThreadPool(threadCount);
+
+        this.orderedResponse = manager.getBooleanProperty("ordered.response", false);
+
+        this.commandProcessor = new CommandProcessor(ServerRole.valueOf(role.toUpperCase()));
+        registerShutdownHook();
+    }
+
     private void registerShutdownHook() {
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             logger.info("Shutdown hook triggered!");
@@ -69,6 +84,7 @@ public class MangoServer {
         logger.info("MangoServer starting...");
         logger.info("Server thread count: {}", threadCount);
         logger.info("Ordered response: {}", orderedResponse);
+        logger.info("Role: {}", commandProcessor.getRole());
         runServer();
     }
 

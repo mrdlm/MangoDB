@@ -11,13 +11,17 @@ public class MangoClient implements AutoCloseable {
     private final String host;
     private final int port;
     private Socket socket;
-    private boolean connected = false;
-    private BufferedReader in;
-    private PrintWriter out;
+    protected boolean connected = false;
+    protected BufferedReader in;
+    protected PrintWriter out;
 
     public MangoClient(final String host, final int port) {
         this.host = host;
         this.port = port;
+    }
+
+    public String getId() {
+       return host + ":" + port;
     }
 
     public void connect() {

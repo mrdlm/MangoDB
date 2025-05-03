@@ -14,8 +14,16 @@ public class MangoApp {
                 ╚═╝     ╚═╝╚═╝  ╚═╝╚═╝  ╚═══╝ ╚═════╝  ╚═════╝ ╚═════╝ ╚═════╝\s 
                 """ ;
         System.out.println(banner);
-        
-        final MangoServer mangoServer = new MangoServer();
-        mangoServer.start();
+
+        if (args.length == 2) {
+            int port = Integer.parseInt(args[0]);
+            String role = args[1];
+
+            final MangoServer mangoServer = new MangoServer(role, port);
+            mangoServer.start();
+        } else {
+            final MangoServer mangoServer = new MangoServer();
+            mangoServer.start();
+        }
     }
 }
