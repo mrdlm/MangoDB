@@ -18,7 +18,7 @@ public class UnsafeMemStore implements MemStore {
     // not thread safe, but fast
     private static Logger logger = LoggerFactory.getLogger(UnsafeMemStore.class);
     private String DATA_PATH;
-    final ConcurrentHashMap<String, MemRecord> keyDir = new ConcurrentHashMap<>();
+    final HashMap<String, MemRecord> keyDir = new HashMap<>();
 
     public UnsafeMemStore() {
         DATA_PATH = new ConfigManager("config.properties").getProperty("datapath");
