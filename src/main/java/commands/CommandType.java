@@ -7,7 +7,9 @@ public enum CommandType {
     EXISTS(1, "EXISTS expects a key"),
     FLUSH(0, "FLUSH expects no parameters"),
     STATUS(0, "STATUS expects no parameters"),
-    HELP(0, "HELP expects no parameters");
+    HELP(0, "HELP expects no parameters"),
+    HEARTBEAT(2, "ERROR: Usage: HEARTBEAT <HOST> <PORT>"),
+    REGISTER(3, "ERROR: Usage: REGISTER <PRIMARY|SECONDARY> <HOST> <PORT>");
 
     private final int parameterCount;
     private final String errorMessage;
