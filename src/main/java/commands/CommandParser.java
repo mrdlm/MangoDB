@@ -14,6 +14,7 @@ import static commands.CommandType.HEARTBEAT;
 import static commands.CommandType.HELP;
 import static commands.CommandType.PUT;
 import static commands.CommandType.REGISTER;
+import static commands.CommandType.SECONDARIES;
 import static commands.CommandType.STATUS;
 import static legacy.engine.LogWriter.FLUSH_TOMBSTONE_VALUE;
 import static legacy.engine.LogWriter.TOMBSTONE_VALUE;
@@ -53,7 +54,12 @@ public class CommandParser {
             case HELP -> handleHelp(argsString);
             case HEARTBEAT -> handleHeartbeat(argsString);
             case REGISTER -> handleRegister(argsString);
+            case SECONDARIES -> handleSecondaries(argsString);
         };
+    }
+
+    private static Command handleSecondaries(final String argsString) {
+        return new Command(SECONDARIES, null);
     }
 
     private static Command handleRegister(final String argsString) {

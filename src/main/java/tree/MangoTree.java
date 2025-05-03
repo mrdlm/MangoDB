@@ -5,15 +5,16 @@ import commands.Command;
 import commands.CommandParser;
 import commands.CommandType;
 
-import javax.print.attribute.standard.RequestingUserName;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Random;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -24,12 +25,6 @@ enum ServerStatus {
    ALIVE,
    DEAD,
    UNKNOWN;
-}
-
-enum ServerRole {
-    PRIMARY,
-    SECONDARY,
-    STANDALONE
 }
 
 
@@ -54,6 +49,14 @@ class ServerInfo {
         client.connect();
     }
 
+    public String getHost() {
+        return host;
+    }
+
+    public int getPort() {
+        return port;
+    }
+
     public MangoClient getClient() {
         return client;
     }
@@ -73,6 +76,7 @@ public class MangoTree {
     private ExecutorService connectionExecutor;
     private HashMap<String, ServerInfo> registeredServers;
     private String primaryServerId;
+    private List<String> secondaryServerIds;
 
     private List<CommandType> PRIMARY_COMMANDS = List.of(
             CommandType.PUT,
@@ -85,7 +89,8 @@ public class MangoTree {
 
     private List<CommandType> TREE_COMMANDS = List.of(
             CommandType.REGISTER,
-            CommandType.HEARTBEAT
+            CommandType.HEARTBEAT,
+            CommandType.SECONDARIES
     );
 
     public MangoTree(int port) {
@@ -93,6 +98,7 @@ public class MangoTree {
         this.connectionExecutor = Executors.newCachedThreadPool();
         this.healthCheckExecutor = Executors.newSingleThreadExecutor();
         this.registeredServers = new HashMap<>();
+        this.secondaryServerIds = new ArrayList<>();
     }
 
     public void start() {
@@ -121,8 +127,6 @@ public class MangoTree {
            PrintWriter out = new PrintWriter(clientSocket.getOutputStream(), true);
        ) {
            String line;
-           out.print(treebanner);
-           out.flush();
            while ((line = in.readLine()) != null) {;
                String response = processCommand(line);
                System.out.println("Received: " + line);
@@ -145,6 +149,7 @@ public class MangoTree {
         final Command command = CommandParser.parse(line);
 
         assert command != null;
+
         if (PRIMARY_COMMANDS.contains(command.type())) {
             // send message to primary
             // if it's not there, say primary not registered
@@ -153,14 +158,19 @@ public class MangoTree {
                 return String.format(WRAP_RED, "PRIMARY NOT REGISTERED");
             }
 
-            ServerInfo primaryServer = registeredServers.get(primaryServerId);
+            final ServerInfo primaryServer = registeredServers.get(primaryServerId);
             final String response = sendCommandToServer(primaryServer, command);
             System.out.println("Response from primary: " + response);
 
             return response;
-        }
+        } else if (SECONDARY_COMMANDS.contains(command.type())) {
+            int randomIndex = new Random().nextInt(secondaryServerIds.size());
+            final String secondaryServerId = secondaryServerIds.get(randomIndex);
 
-        if (command.type().equals(CommandType.REGISTER)) {
+            System.out.println("Sending command to secondary server: " + secondaryServerId + " at index: " + randomIndex);
+            final ServerInfo secondaryServer = registeredServers.get(secondaryServerId);
+            return  sendCommandToServer(secondaryServer, command);
+        } else if (command.type().equals(CommandType.REGISTER)) {
             System.out.println("Registering command: " + command);
             String role = command.args()[0];
             Integer port = Integer.valueOf(command.args()[1]);
@@ -172,6 +182,17 @@ public class MangoTree {
                 System.err.println("Error registering command: " + e.getMessage());
                 return String.format(WRAP_RED, "ERROR REGISTERING: " + e.getMessage());
             }
+        } else if (command.type().equals(CommandType.SECONDARIES)) {
+            String response = "";
+            for (final String secondaryServerId : secondaryServerIds) {
+                final ServerInfo secondaryServer = registeredServers.get(secondaryServerId);
+                response += secondaryServer.getHost() + " " + secondaryServer.getPort() + " ";
+            }
+            System.out.println("Response: " + response);
+            return response;
+        } else {
+            System.err.println("Unknown command type: " + command.type());
+            throw new RuntimeException("Unknown command type: " + command.type());
         }
 
         return String.format(WRAP_GREEN, "SUCCESSFULLY REGISTERED");
@@ -217,6 +238,8 @@ public class MangoTree {
             registeredServers.put(serverId, new ServerInfo(host, port, role));
             if (role == ServerRole.PRIMARY) {
                 primaryServerId = serverId;
+            } else if (role == ServerRole.SECONDARY) {
+                secondaryServerIds.add(serverId);
             }
         }
 
