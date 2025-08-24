@@ -19,6 +19,7 @@ public class MangoApp {
             int port = Integer.parseInt(args[0]);
             String role = args[1];
 
+            System.out.println("Port: " + port + ", Role: " + role);
             final MangoServer mangoServer = new MangoServer(role, port);
             mangoServer.start();
         } else {

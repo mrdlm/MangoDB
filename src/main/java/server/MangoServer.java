@@ -20,6 +20,9 @@ public class MangoServer {
 
     private static final Logger logger = LoggerFactory.getLogger(MangoServer.class);
     private static final int SERVER_SOCKET_BACKLOG = 1000;
+    public static final String CONFIG_PROPERTIES = "config.properties";
+    public static final String SERVER_THREADS = "server.threads";
+    public static final String ORDERED_RESPONSE = "ordered.response";
 
     private final int port;
     private final ExecutorService threadPool;
@@ -46,12 +49,12 @@ public class MangoServer {
     public MangoServer(final String role, final int port) throws IOException {
         this.port = port;
 
-        ConfigManager manager = new ConfigManager("config.properties");
+        ConfigManager manager = new ConfigManager(CONFIG_PROPERTIES);
 
-        threadCount = manager.getIntProperty("server.threads", 1);
+        threadCount = manager.getIntProperty(SERVER_THREADS, 1);
         this.threadPool = Executors.newFixedThreadPool(threadCount);
 
-        this.orderedResponse = manager.getBooleanProperty("ordered.response", false);
+        this.orderedResponse = manager.getBooleanProperty(ORDERED_RESPONSE, false);
 
         this.commandProcessor = new CommandProcessor(ServerRole.valueOf(role.toUpperCase()));
         registerShutdownHook();
