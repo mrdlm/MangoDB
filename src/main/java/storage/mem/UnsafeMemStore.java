@@ -1,11 +1,17 @@
-package storage.mem; import config.ConfigManager;
-import org.slf4j.Logger; import org.slf4j.LoggerFactory; import storage.disk.DiskRecord;
+package storage.mem;
+
+import config.ConfigManager;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import storage.disk.DiskRecord;
 
 import java.io.File;
-import java.io.IOException; import java.nio.channels.FileChannel;
+import java.io.IOException;
+import java.nio.channels.FileChannel;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
-import java.util.Collections; import java.util.HashMap;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -32,8 +38,8 @@ public class UnsafeMemStore implements MemStore {
 
     @Override
     public void write(String key, long valueOffset, String filename, long timestamp) {
-       MemRecord memRecord = new MemRecord(valueOffset, filename, timestamp);
-       keyDir.put(key, memRecord);
+        MemRecord memRecord = new MemRecord(valueOffset, filename, timestamp);
+        keyDir.put(key, memRecord);
     }
 
     @Override
@@ -63,7 +69,7 @@ public class UnsafeMemStore implements MemStore {
         List<String> sortedFileNames = fileChannels.keySet().stream().sorted(Collections.reverseOrder()).toList();
         long latestFlushTimestamp = Long.MIN_VALUE;
 
-        for (final String filename: sortedFileNames) {
+        for (final String filename : sortedFileNames) {
             logger.info("Reading data file: {}", filename);
             long offset = 0;
             final FileChannel fileChannel = fileChannels.get(filename);
@@ -77,7 +83,8 @@ public class UnsafeMemStore implements MemStore {
 
                 if (record != null) {
                     if (record.value().equals(TOMBSTONE_VALUE)) {
-                        if (keyDir.containsKey(record.key()) && keyDir.get(record.key()).timestamp() < record.timestamp()) {
+                        if (keyDir.containsKey(record.key())
+                                && keyDir.get(record.key()).timestamp() < record.timestamp()) {
                             keyDir.remove(record.key());
                             offset = record.offset() + 2;
                             continue;
@@ -119,5 +126,19 @@ public class UnsafeMemStore implements MemStore {
         }
 
         logger.info("KeyDir constructed finished, size: {}\n", keyDir.size());
+    }
+
+    @Override
+    public void delete(final String key) {
+        if (!keyDir.containsKey(key)) {
+            return;
+        }
+
+        try {
+            keyDir.remove(key);
+        } catch (final Exception e) {
+            logger.error("Exception while deleting key", e);
+            throw new RuntimeException(e);
+        }
     }
 }
