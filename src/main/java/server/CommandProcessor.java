@@ -80,6 +80,8 @@ public class CommandProcessor {
             return switch (command.type()) {
                 case PUT -> handlePut(command.args());
                 case GET -> handleGet(command.args());
+                case DELETE -> handleDelete(command.args());
+
                 default ->
                     CompletableFuture.completedFuture(String.format(WRAP_RED, "ERROR: " + RESPONSE_INVALID_INPUT));
             };
@@ -92,7 +94,7 @@ public class CommandProcessor {
         final CompletableFuture<Void> responseFuture = storageEngine.write(args[0], args[1]);
 
         return responseFuture.thenApply(voidResult -> {
-            if (serverRole == ServerRole.PRIMARY && replicationManager != null) {
+            if (serverRole == ServerRole.PRIMARY) {
                 replicationManager.asyncReplicate(args[0], args[1]);
             }
 
@@ -114,6 +116,14 @@ public class CommandProcessor {
             }
 
             return String.format(WRAP_YELLOW, value);
+        });
+    }
+
+    private CompletableFuture<String> handleDelete(final String[] args) {
+        final CompletableFuture<Void> deleteFuture = storageEngine.delete(args[0]);
+
+        return deleteFuture.thenApply(voidResult -> {
+            return String.format(WRAP_GREEN, "SUCCESS");
         });
     }
 }

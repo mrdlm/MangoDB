@@ -30,6 +30,7 @@ public class SingleThreadedStorageEngine implements StorageEngine {
     private static final Logger logger = LoggerFactory.getLogger(SingleThreadedStorageEngine.class);
     private static final int MAX_BATCH_SIZE = 1000;
     private static final int MAX_WRITE_CHANNEL_SIZE = 64 * 1024 * 1024; // 64 MB
+    private static final String TOMBSTONE_VALUE = "__TOMBSTONE__";
     private final DiskStore diskStore;
     private final MemStore memStore;
     private final String DATA_PATH;
@@ -84,7 +85,8 @@ public class SingleThreadedStorageEngine implements StorageEngine {
         }
 
         try {
-            final String value = diskStore.read(memRecord.get().valueOffset(), fileNamesToReadChannels.get(memRecord.get().filename()));
+            final String value = diskStore.read(memRecord.get().valueOffset(),
+                    fileNamesToReadChannels.get(memRecord.get().filename()));
             return CompletableFuture.completedFuture(value);
         } catch (final IOException e) {
             logger.error("Exception while reading request", e);
@@ -93,8 +95,18 @@ public class SingleThreadedStorageEngine implements StorageEngine {
     }
 
     @Override
-    public CompletableFuture<Void> delete(String key) {
-        return null;
+    public CompletableFuture<Void> delete(final String key) {
+        final Optional<MemRecord> memRecord = memStore.read(key);
+        if (memRecord.isEmpty()) {
+            return CompletableFuture.completedFuture(null);
+        }
+
+        try {
+            return write(key, TOMBSTONE_VALUE);
+        } catch (final Exception e) {
+            logger.error("Exception while deleting key", e);
+            throw new RuntimeException(e);
+        }
     }
 
     @Override
@@ -121,7 +133,13 @@ public class SingleThreadedStorageEngine implements StorageEngine {
 
                 for (int i = 0; i < writeResults.size(); i++) {
                     final AsyncWriteRequest batchItem = batch.get(i);
-                    memStore.write(batchItem.key(), writeResults.get(i).offset(), currentWriteFileName, writeResults.get(i).timestamp());
+
+                    if (!batchItem.value().equals(TOMBSTONE_VALUE)) {
+                        memStore.write(batchItem.key(), writeResults.get(i).offset(), currentWriteFileName,
+                                writeResults.get(i).timestamp());
+                    } else {
+                        memStore.delete(batchItem.key());
+                    }
 
                     // set value to null since the CompletableFuture is of void type
                     batchItem.future().complete(null);
@@ -193,13 +211,11 @@ public class SingleThreadedStorageEngine implements StorageEngine {
             writeChannel = FileChannel.open(
                     Path.of(DATA_PATH + currentWriteFileName),
                     StandardOpenOption.CREATE,
-                    StandardOpenOption.APPEND
-            );
+                    StandardOpenOption.APPEND);
 
             FileChannel currentReadFileChannel = FileChannel.open(
                     Path.of(DATA_PATH + currentWriteFileName),
-                    StandardOpenOption.READ
-            );
+                    StandardOpenOption.READ);
             fileNamesToReadChannels.put(currentWriteFileName, currentReadFileChannel);
         } catch (IOException e) {
             throw new RuntimeException(e);
@@ -220,8 +236,7 @@ public class SingleThreadedStorageEngine implements StorageEngine {
         return FileChannel.open(
                 Path.of(DATA_PATH + currentWriteFileName),
                 StandardOpenOption.CREATE,
-                StandardOpenOption.APPEND
-        );
+                StandardOpenOption.APPEND);
     }
 
 }
