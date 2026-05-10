@@ -57,12 +57,14 @@ public class CommandProcessor {
             case "multi" -> storageEngine = new MultiThreadedStorageEngine();
             default -> throw new UnsupportedOperationException("Unsupported storage engine type specified");
         }
+        // it should start replication manager only when it's primary
+        boolean replicationEnabled = configManager.getBooleanProperty("replication.enabled", false);
+        replicationManager = new ReplicationManager(replicationEnabled);
     }
 
     public CommandProcessor(final ServerRole role) throws IOException {
         this();
         this.serverRole = role;
-        replicationManager = new ReplicationManager();
     }
 
     public ServerRole getRole() {
@@ -103,7 +105,7 @@ public class CommandProcessor {
         final CompletableFuture<Void> responseFuture = storageEngine.write(args[0], args[1]);
 
         return responseFuture.thenApply(voidResult -> {
-            if (serverRole == ServerRole.PRIMARY ) {
+            if (serverRole == ServerRole.PRIMARY && replicationManager.isReplicationEnabled()) {
                 replicationManager.asyncReplicate(args[0], args[1]);
             }
 

@@ -22,11 +22,10 @@ import static server.CommandProcessor.WRAP_GREEN;
 import static server.CommandProcessor.WRAP_RED;
 
 enum ServerStatus {
-   ALIVE,
-   DEAD,
-   UNKNOWN;
+    ALIVE,
+    DEAD,
+    UNKNOWN;
 }
-
 
 class ServerInfo {
     private String host;
@@ -36,10 +35,9 @@ class ServerInfo {
     private MangoClient client;
 
     public ServerInfo(
-           final String host,
-           final int port,
-           final ServerRole role
-    ) {
+            final String host,
+            final int port,
+            final ServerRole role) {
         this.host = host;
         this.port = port;
         this.role = role;
@@ -64,13 +62,13 @@ class ServerInfo {
 
 public class MangoTree {
     private static String treebanner = """
-             __  __                       _____             \s
-            |  \\/  | __ _ _ __   __ _  __|_   _| __ ___  ___\s
-            | |\\/| |/ _` | '_ \\ / _` |/ _ \\| || '__/ _ \\/ _ \\
-            | |  | | (_| | | | | (_| | (_) | || | |  __/  __/
-            |_|  |_|\\__,_|_| |_|\\__, |\\___/|_||_|  \\___|\\___|
-                                |___/                       \s
-         """;
+                __  __                       _____             \s
+               |  \\/  | __ _ _ __   __ _  __|_   _| __ ___  ___\s
+               | |\\/| |/ _` | '_ \\ / _` |/ _ \\| || '__/ _ \\/ _ \\
+               | |  | | (_| | | | | (_| | (_) | || | |  __/  __/
+               |_|  |_|\\__,_|_| |_|\\__, |\\___/|_||_|  \\___|\\___|
+                                   |___/                       \s
+            """;
     private int port;
     private ExecutorService healthCheckExecutor;
     private ExecutorService connectionExecutor;
@@ -80,18 +78,15 @@ public class MangoTree {
 
     private List<CommandType> PRIMARY_COMMANDS = List.of(
             CommandType.PUT,
-            CommandType.DELETE
-    );
+            CommandType.DELETE);
 
     private List<CommandType> SECONDARY_COMMANDS = List.of(
-            CommandType.GET
-    );
+            CommandType.GET);
 
     private List<CommandType> TREE_COMMANDS = List.of(
             CommandType.REGISTER,
             CommandType.HEARTBEAT,
-            CommandType.SECONDARIES
-    );
+            CommandType.SECONDARIES);
 
     public MangoTree(int port) {
         this.port = port;
@@ -121,28 +116,28 @@ public class MangoTree {
     }
 
     private void handleClientConnection(final Socket clientSocket) {
-       System.out.println("Handling client connection from " + clientSocket.getRemoteSocketAddress());
-       try(
-           BufferedReader in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
-           PrintWriter out = new PrintWriter(clientSocket.getOutputStream(), true);
-       ) {
-           String line;
-           while ((line = in.readLine()) != null) {;
-               String response = processCommand(line);
-               System.out.println("Received: " + line);
-               out.println(response);
-           }
-       } catch (Exception e) {
-           System.err.println("Error handling client connection: " + e.getMessage());
-           throw new RuntimeException(e);
-       } finally {
-           try {
-               System.out.println("Closing client connection from " + clientSocket.getRemoteSocketAddress());
-               clientSocket.close();
-           } catch (IOException e) {
-               // ignore
-           }
-       }
+        System.out.println("Handling client connection from " + clientSocket.getRemoteSocketAddress());
+        try (
+                BufferedReader in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
+                PrintWriter out = new PrintWriter(clientSocket.getOutputStream(), true);) {
+            String line;
+            while ((line = in.readLine()) != null) {
+                ;
+                String response = processCommand(line);
+                System.out.println("Received: " + line);
+                out.println(response);
+            }
+        } catch (Exception e) {
+            System.err.println("Error handling client connection: " + e.getMessage());
+            throw new RuntimeException(e);
+        } finally {
+            try {
+                System.out.println("Closing client connection from " + clientSocket.getRemoteSocketAddress());
+                clientSocket.close();
+            } catch (IOException e) {
+                // ignore
+            }
+        }
     }
 
     private String processCommand(final String line) {
@@ -167,9 +162,10 @@ public class MangoTree {
             int randomIndex = new Random().nextInt(secondaryServerIds.size());
             final String secondaryServerId = secondaryServerIds.get(randomIndex);
 
-            System.out.println("Sending command to secondary server: " + secondaryServerId + " at index: " + randomIndex);
+            System.out
+                    .println("Sending command to secondary server: " + secondaryServerId + " at index: " + randomIndex);
             final ServerInfo secondaryServer = registeredServers.get(secondaryServerId);
-            return  sendCommandToServer(secondaryServer, command);
+            return sendCommandToServer(secondaryServer, command);
         } else if (command.type().equals(CommandType.REGISTER)) {
             System.out.println("Registering command: " + command);
             String role = command.args()[0];
@@ -222,10 +218,10 @@ public class MangoTree {
 
     private void handleRegistration(final String roleStr, final Integer port, final String host) {
         ServerRole role = ServerRole.valueOf(roleStr.toUpperCase());
-        String serverId =  String.format("%s:%d", role, port);
+        String serverId = String.format("%s:%d", role, port);
 
         if (role == ServerRole.PRIMARY) {
-            if (primaryServerId != null && primaryServerId != serverId) {
+            if (primaryServerId != null && !primaryServerId.equals(serverId)) {
                 throw new RuntimeException("There's already a primary server registered");
             }
         }
@@ -251,10 +247,9 @@ public class MangoTree {
         // stop connection executor
     }
 
-    public static void main(String [] args) {
+    public static void main(String[] args) {
         int port = 9090;
         MangoTree tree = new MangoTree(port);
         tree.start();
     }
 }
-
