@@ -23,7 +23,7 @@ public class CommandProcessor {
 
     public static final String WRAP_GREEN = ANSI_GREEN + "%s" + ANSI_RESET;
     public static final String WRAP_RED = ANSI_RED + "%s" + ANSI_RESET;
-    public static final String WRAP_CYAN = ANSI_CYAN+ "%s" + ANSI_RESET;
+    public static final String WRAP_CYAN = ANSI_CYAN + "%s" + ANSI_RESET;
     public static final String WRAP_YELLOW = ANSI_YELLOW + "%s" + ANSI_RESET;
 
     public static final String RESPONSE_INVALID_INPUT = "INVALID INPUT";
@@ -80,7 +80,8 @@ public class CommandProcessor {
             return switch (command.type()) {
                 case PUT -> handlePut(command.args());
                 case GET -> handleGet(command.args());
-                default -> CompletableFuture.completedFuture(String.format(WRAP_RED, "ERROR: " + RESPONSE_INVALID_INPUT));
+                default ->
+                    CompletableFuture.completedFuture(String.format(WRAP_RED, "ERROR: " + RESPONSE_INVALID_INPUT));
             };
         } catch (final Exception e) {
             return CompletableFuture.completedFuture(String.format(WRAP_RED, "ERROR: " + e.getMessage()));
@@ -91,7 +92,7 @@ public class CommandProcessor {
         final CompletableFuture<Void> responseFuture = storageEngine.write(args[0], args[1]);
 
         return responseFuture.thenApply(voidResult -> {
-            if (serverRole == ServerRole.PRIMARY) {
+            if (serverRole == ServerRole.PRIMARY && replicationManager != null) {
                 replicationManager.asyncReplicate(args[0], args[1]);
             }
 
@@ -107,12 +108,12 @@ public class CommandProcessor {
         final CompletableFuture<String> readFuture = storageEngine.read(args[0]);
 
         return readFuture.thenApply(value -> {
-                if (value == null) {
-                    System.out.println(RESPONSE_NOT_FOUND);
-                    return  String.format(WRAP_RED, RESPONSE_NOT_FOUND);
-                }
+            if (value == null) {
+                System.out.println(RESPONSE_NOT_FOUND);
+                return String.format(WRAP_RED, RESPONSE_NOT_FOUND);
+            }
 
-                return String.format(WRAP_YELLOW, value);
+            return String.format(WRAP_YELLOW, value);
         });
     }
 }
