@@ -116,13 +116,8 @@ public class UnsafeMemStore implements MemStore {
         }
 
         if (latestFlushTimestamp != Long.MIN_VALUE) {
-            for (final String key : keyDir.keySet()) {
-                // there's no other correct way to do this
-                // if we clear keyDir upon seeing
-                if (keyDir.get(key).timestamp() < latestFlushTimestamp) {
-                    keyDir.remove(key);
-                }
-            }
+            final long flushTs = latestFlushTimestamp;
+            keyDir.entrySet().removeIf(e -> e.getValue().timestamp() < flushTs);
         }
 
         logger.info("KeyDir constructed finished, size: {}\n", keyDir.size());
@@ -138,6 +133,16 @@ public class UnsafeMemStore implements MemStore {
             keyDir.remove(key);
         } catch (final Exception e) {
             logger.error("Exception while deleting key", e);
+            throw new RuntimeException(e);
+        }
+    }
+
+    @Override
+    public void flush() {
+        try {
+            keyDir.clear();
+        } catch (Exception e) {
+            logger.error("Exception while flushing keyDir", e);
             throw new RuntimeException(e);
         }
     }

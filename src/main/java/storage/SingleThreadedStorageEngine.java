@@ -31,6 +31,7 @@ public class SingleThreadedStorageEngine implements StorageEngine {
     private static final int MAX_BATCH_SIZE = 1000;
     private static final int MAX_WRITE_CHANNEL_SIZE = 64 * 1024 * 1024; // 64 MB
     private static final String TOMBSTONE_VALUE = "__TOMBSTONE__";
+    private static final String FLUSH_TOMBSTONE_VALUE = "__FLUSH_TOMBSTONE__";
     private final DiskStore diskStore;
     private final MemStore memStore;
     private final String DATA_PATH;
@@ -111,7 +112,10 @@ public class SingleThreadedStorageEngine implements StorageEngine {
 
     @Override
     public CompletableFuture<Void> flush() {
-        return null;
+        memStore.flush();
+        write(FLUSH_TOMBSTONE_VALUE, TOMBSTONE_VALUE);
+
+        return CompletableFuture.completedFuture(null);
     }
 
     @Override

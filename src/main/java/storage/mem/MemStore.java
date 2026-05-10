@@ -9,4 +9,6 @@ public interface MemStore {
 
     // what should be the return type?
     void delete(String key);
+
+    void flush();
 }

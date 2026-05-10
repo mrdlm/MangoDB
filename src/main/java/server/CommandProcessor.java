@@ -81,6 +81,7 @@ public class CommandProcessor {
                 case PUT -> handlePut(command.args());
                 case GET -> handleGet(command.args());
                 case DELETE -> handleDelete(command.args());
+                case FLUSH -> handleFlush(command.args());
 
                 default ->
                     CompletableFuture.completedFuture(String.format(WRAP_RED, "ERROR: " + RESPONSE_INVALID_INPUT));
@@ -90,11 +91,19 @@ public class CommandProcessor {
         }
     }
 
+    private CompletableFuture<String> handleFlush(String[] args) {
+        final CompletableFuture<Void> flushFuture = storageEngine.flush();
+
+        return flushFuture.thenApply(voidResult -> {
+            return String.format(WRAP_GREEN, "SUCCESS");
+        });
+    }
+
     private CompletableFuture<String> handlePut(final String[] args) {
         final CompletableFuture<Void> responseFuture = storageEngine.write(args[0], args[1]);
 
         return responseFuture.thenApply(voidResult -> {
-            if (serverRole == ServerRole.PRIMARY) {
+            if (serverRole == ServerRole.PRIMARY ) {
                 replicationManager.asyncReplicate(args[0], args[1]);
             }
 
