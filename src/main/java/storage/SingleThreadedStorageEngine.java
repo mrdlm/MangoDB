@@ -43,6 +43,7 @@ public class SingleThreadedStorageEngine implements StorageEngine {
 
     String currentWriteFileName;
     FileChannel writeChannel;
+    private final long startTime = System.currentTimeMillis();
 
     public SingleThreadedStorageEngine() throws IOException {
         this.diskStore = new SerialDiskStore();
@@ -119,8 +120,32 @@ public class SingleThreadedStorageEngine implements StorageEngine {
     }
 
     @Override
-    public String getStatus() {
-        return "";
+    public CompletableFuture<Boolean> exists(String key) {
+        final Optional<MemRecord> memRecord = memStore.read(key);
+
+        if (memRecord.isEmpty()) {
+            return CompletableFuture.completedFuture(false);
+        } else {
+            return CompletableFuture.completedFuture(true);
+        }
+    }
+
+    @Override
+    public StorageStatus getStatus() {
+        long diskSizeBytes = 0;
+        for (FileChannel ch : fileNamesToReadChannels.values()) {
+            try {
+                diskSizeBytes += ch.size();
+            } catch (IOException e) {
+                logger.warn("Failed to read size for a data file channel", e);
+            }
+        }
+
+        return new StorageStatus(
+                diskSizeBytes,
+                fileNamesToReadChannels.size(),
+                memStore.size(),
+                System.currentTimeMillis() - startTime);
     }
 
     private void processWriteQueue() {
@@ -242,5 +267,6 @@ public class SingleThreadedStorageEngine implements StorageEngine {
                 StandardOpenOption.CREATE,
                 StandardOpenOption.APPEND);
     }
+
 
 }

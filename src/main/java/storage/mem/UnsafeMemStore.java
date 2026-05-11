@@ -146,4 +146,9 @@ public class UnsafeMemStore implements MemStore {
             throw new RuntimeException(e);
         }
     }
+
+    @Override
+    public int size() {
+        return keyDir.size();
+    }
 }

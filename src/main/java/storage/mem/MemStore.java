@@ -11,4 +11,6 @@ public interface MemStore {
     void delete(String key);
 
     void flush();
+
+    int size();
 }
