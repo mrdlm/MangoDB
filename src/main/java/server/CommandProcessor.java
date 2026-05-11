@@ -8,6 +8,7 @@ import replication.ReplicationManager;
 import storage.MultiThreadedStorageEngine;
 import storage.SingleThreadedStorageEngine;
 import storage.StorageEngine;
+import storage.StorageStatus;
 import tree.ServerRole;
 
 import java.io.IOException;
@@ -57,12 +58,17 @@ public class CommandProcessor {
             case "multi" -> storageEngine = new MultiThreadedStorageEngine();
             default -> throw new UnsupportedOperationException("Unsupported storage engine type specified");
         }
+        // it should start replication manager only when it's primary
+        boolean replicationEnabled = configManager.getBooleanProperty("replication.enabled", false);
+        replicationManager = new ReplicationManager(replicationEnabled);
     }
 
     public CommandProcessor(final ServerRole role) throws IOException {
         this();
         this.serverRole = role;
-        replicationManager = new ReplicationManager();
+        ConfigManager configManager = new ConfigManager("config.properties");
+        boolean replicationEnabled = configManager.getBooleanProperty("replication.enabled", false);
+        replicationManager = new ReplicationManager(replicationEnabled);
     }
 
     public ServerRole getRole() {
@@ -81,6 +87,9 @@ public class CommandProcessor {
                 case PUT -> handlePut(command.args());
                 case GET -> handleGet(command.args());
                 case DELETE -> handleDelete(command.args());
+                case FLUSH -> handleFlush(command.args());
+                case EXISTS -> handleExists(command.args());
+                case STATUS -> handleStatus(command.args());
 
                 default ->
                     CompletableFuture.completedFuture(String.format(WRAP_RED, "ERROR: " + RESPONSE_INVALID_INPUT));
@@ -90,11 +99,32 @@ public class CommandProcessor {
         }
     }
 
+    private CompletableFuture<String> handleExists(String[] args) {
+        final CompletableFuture<Boolean> existsFuture = storageEngine.exists(args[0]);
+
+        return existsFuture.thenApply(exists -> {
+            if (exists) {
+                return String.format(WRAP_GREEN, "EXISTS");
+            } else {
+                return String.format(WRAP_YELLOW, "DOES NOT EXIST");
+            }
+        });
+    }
+
+    private CompletableFuture<String> handleFlush(String[] args) {
+        final CompletableFuture<Void> flushFuture = storageEngine.flush();
+
+        return flushFuture.thenApply(voidResult -> {
+            return String.format(WRAP_GREEN, "SUCCESS");
+        });
+    }
+
     private CompletableFuture<String> handlePut(final String[] args) {
         final CompletableFuture<Void> responseFuture = storageEngine.write(args[0], args[1]);
 
         return responseFuture.thenApply(voidResult -> {
-            if (serverRole == ServerRole.PRIMARY) {
+            if (serverRole == ServerRole.PRIMARY && replicationManager.isReplicationEnabled()) {
+                System.out.println("Replicating to secondaries");
                 replicationManager.asyncReplicate(args[0], args[1]);
             }
 
@@ -125,5 +155,48 @@ public class CommandProcessor {
         return deleteFuture.thenApply(voidResult -> {
             return String.format(WRAP_GREEN, "SUCCESS");
         });
+    }
+
+    private CompletableFuture<String> handleStatus(final String[] args) {
+        final StorageStatus status = storageEngine.getStatus();
+        final String body = String.format(
+                "Disk Size:    %s%n" +
+                "File Count:   %d%n" +
+                "Keys:         %d%n" +
+                "Uptime:       %s",
+                formatBytes(status.diskSizeBytes()),
+                status.fileCount(),
+                status.keyCount(),
+                formatDuration(status.uptimeMillis()));
+        return CompletableFuture.completedFuture(String.format(WRAP_CYAN, body));
+    }
+
+    private static String formatBytes(final long bytes) {
+        if (bytes < 1024) {
+            return bytes + " B";
+        }
+        final String[] units = {"KB", "MB", "GB", "TB"};
+        double size = bytes / 1024.0;
+        int unitIndex = 0;
+        while (size >= 1024 && unitIndex < units.length - 1) {
+            size /= 1024;
+            unitIndex++;
+        }
+        return String.format("%.2f %s", size, units[unitIndex]);
+    }
+
+    private static String formatDuration(final long millis) {
+        long totalSeconds = millis / 1000;
+        long days = totalSeconds / 86400;
+        long hours = (totalSeconds % 86400) / 3600;
+        long minutes = (totalSeconds % 3600) / 60;
+        long seconds = totalSeconds % 60;
+
+        StringBuilder sb = new StringBuilder();
+        if (days > 0) sb.append(days).append("d ");
+        if (hours > 0 || sb.length() > 0) sb.append(hours).append("h ");
+        if (minutes > 0 || sb.length() > 0) sb.append(minutes).append("m ");
+        sb.append(seconds).append("s");
+        return sb.toString();
     }
 }

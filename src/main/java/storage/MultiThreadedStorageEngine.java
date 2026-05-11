@@ -1,6 +1,5 @@
 package storage;
 
-import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
 public class MultiThreadedStorageEngine implements StorageEngine {
@@ -25,7 +24,12 @@ public class MultiThreadedStorageEngine implements StorageEngine {
     }
 
     @Override
-    public String getStatus() {
-        return "";
+    public StorageStatus getStatus() {
+        return new StorageStatus(0, 0, 0, 0);
+    }
+
+    @Override
+    public CompletableFuture<Boolean> exists(String key) {
+        return null;
     }
 }

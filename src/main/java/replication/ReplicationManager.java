@@ -16,14 +16,22 @@ import java.util.concurrent.BlockingQueue;
 
 public class ReplicationManager {
 
-    private final List<MangoClient> secondaryMangoClients;
-    private final MangoTreeClient treeClient;
-    private final Thread replicationThread;
-    private final BlockingQueue<WriteRequest> replicationQueue;
-    private final Set<String> secondaryIds;
+    private List<MangoClient> secondaryMangoClients;
+    private MangoTreeClient treeClient;
+    private Thread replicationThread;
+    private BlockingQueue<WriteRequest> replicationQueue;
+    private Set<String> secondaryIds;
+    private boolean replicationEnabled;
 
-    public ReplicationManager() {
+    public ReplicationManager(boolean replicationEnabled) {
         // this shouldn't be hardcoded
+        this.replicationEnabled = replicationEnabled;
+        if (replicationEnabled) {
+            connectAndStart();
+        }
+    }
+
+    private void connectAndStart() {
         this.treeClient = new MangoTreeClient("localhost", 9090);
         treeClient.connect();
 
@@ -45,25 +53,25 @@ public class ReplicationManager {
 
     public void replicateToSecondaries() {
         while (!Thread.currentThread().isInterrupted()) {
-           if (!replicationQueue.isEmpty()) {
-               final WriteRequest request = replicationQueue.poll();
+            if (!replicationQueue.isEmpty()) {
+                final WriteRequest request = replicationQueue.poll();
 
-               try {
-                   if (secondaryMangoClients.isEmpty()) {
-                       System.out.println("No secondary clients available for replication; refreshing...");
-                       refreshSecondaryClients();
-                   }
+                try {
+                    if (secondaryMangoClients.isEmpty()) {
+                        System.out.println("No secondary clients available for replication; refreshing...");
+                        refreshSecondaryClients();
+                    }
 
-                   for (final MangoClient secondaryClient : secondaryMangoClients) {
-                       secondaryClient.put(request.key(), request.value());
-                   }
-               } catch (final Exception e) {
-                   System.err.println("Failed to replicate to secondary: " + e.getMessage());
-                   // refresh secondary clients and retry
-                   refreshSecondaryClients();
-                   replicationQueue.add(request); // push back to queue
-               }
-           }
+                    for (final MangoClient secondaryClient : secondaryMangoClients) {
+                        secondaryClient.put(request.key(), request.value());
+                    }
+                } catch (final Exception e) {
+                    System.err.println("Failed to replicate to secondary: " + e.getMessage());
+                    // refresh secondary clients and retry
+                    refreshSecondaryClients();
+                    replicationQueue.add(request); // push back to queue
+                }
+            }
         }
     }
 
@@ -99,5 +107,9 @@ public class ReplicationManager {
             System.err.println("Failed to refresh secondary clients: " + e.getMessage());
             throw new RuntimeException(e);
         }
+    }
+
+    public boolean isReplicationEnabled() {
+        return replicationEnabled;
     }
 }
